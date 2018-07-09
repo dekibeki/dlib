@@ -201,6 +201,9 @@ namespace dlib::utility {
   template<typename ListArg>
   using First = Get<0, ListArg>;
 
+  template<typename ...Args>
+  using FirstEx = First<List<Args...>>;
+
   template<template<typename ...> typename NewList, typename ListArg>
   using ChangeContainer = typename impl::ChangeContainerImpl<NewList, ListArg>::Value;
 

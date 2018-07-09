@@ -1,6 +1,7 @@
 #pragma once
 
 #include <type_traits>
+#include <dlib/utility.hpp>
 
 namespace dlib::args {
   namespace impl {
@@ -106,4 +107,9 @@ namespace dlib::args {
   template<template<typename> typename Target, typename ...Options>
   using Get = ::std::enable_if_t<impl::GetImpl<Target, void, Options...>::found,
     typename impl::GetImpl<Target, void, Options...>::type>;
+
+  template<typename Self, typename ...Options>
+  using EnableIfNotCopyOrMove = std::enable_if_t <
+    !(sizeof...(Options) == 1 &&
+      std::is_same_v<Self, std::decay_t<utility::FirstEx<Options...>>>)>;
 }
