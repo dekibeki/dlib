@@ -33,6 +33,8 @@ set(dlibSources
   ${dlibSrc}/stmt.cpp
   ${dlibSrc}/serialization.cpp
   ${dlibSrc}/unordered_vector.cpp
+  ${dlibSrc}/soa.cpp
+  ${dlibSrc}/vector.cpp
 )
 
 set(dlibTests
@@ -44,6 +46,7 @@ set(dlibTests
   ${dlibTest}/test_serialization.cpp
   ${dlibTest}/test_arrays.cpp
   ${dlibTest}/test_unordered_vector.cpp
+  ${dlibTest}/test_soa.cpp
   )
 
 add_library(dlib ${dlibSources})
