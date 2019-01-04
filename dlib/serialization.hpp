@@ -171,7 +171,7 @@ namespace dlib {
     }
   }
 
-  template<typename OutputIterator, typename typename ...T>
+  template<typename OutputIterator, typename ...T>
   OutputIterator serialize(OutputIterator iter, T const&... rest) noexcept {
     return serialization::serialize(std::move(iter), rest...);
   }
