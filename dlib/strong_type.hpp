@@ -706,6 +706,8 @@ namespace dlib::strongValue {
 
   using Regular = impl::NestedExpandTo<Construct<>, Copy, Move, Orderable>;
 
+  using Group = impl::NestedExpandTo<Add::Self<>, AddAssign::Self<>, Sub::Self<>, SubAssign::Self<>>;
+
   using Field = impl::NestedExpandTo<Add::Self<>, Sub::Self<>, Mult::Self<>, Div::Self<>, AddAssign::Self<>, SubAssign::Self<>, MultAssign::Self<>, DivAssign::Self<>>;
 
   namespace impl {
