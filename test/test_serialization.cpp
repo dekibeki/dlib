@@ -4,22 +4,22 @@
 #include <iterator>
 #include <dlib/serialization.hpp>
 
-
+using namespace dlib;
 
 BOOST_AUTO_TEST_CASE(serialization_size) {
-  const auto int_size = dlib::serialization_size(int{ 0 });
+  const auto int_size = serialization::serialization_size(int{ 0 });
   BOOST_TEST((int_size == sizeof(int)));
-  const auto char_size = dlib::serialization_size(char{ 0 });
+  const auto char_size = serialization::serialization_size(char{ 0 });
   BOOST_TEST((char_size == sizeof(char)));
-  const auto compound_size = dlib::serialization_size(int{ 0 }, double{ 0 });
+  const auto compound_size = serialization::serialization_size(int{ 0 }, double{ 0 });
   BOOST_TEST((compound_size == sizeof(int) + sizeof(double)));
 }
 
 BOOST_AUTO_TEST_CASE(serialization_compound) {
   std::vector<std::byte> writing;
-  auto write_size = dlib::serialization_size(uint32_t{ 0xdeadbeef }, double{ -5.5 });
+  auto write_size = serialization::serialization_size(uint32_t{ 0xdeadbeef }, double{ -5.5 });
   writing.reserve(write_size);
-  auto write_res = dlib::serialize(std::back_insert_iterator{ writing }, uint32_t{ 0xdeadbeef }, double{ -5.5 });
+  auto write_res = serialization::serialize(std::back_insert_iterator{ writing }, uint32_t{ 0xdeadbeef }, double{ -5.5 });
 }
 
 namespace {
@@ -53,7 +53,7 @@ namespace {
 
 namespace dlib {
   template<typename InputIterator, typename EndIterator>
-  dlib::Result<dlib::Deserialization<NonDefaultConstructable, InputIterator>> deserialize(InputIterator begin, EndIterator end, dlib::Type_arg<NonDefaultConstructable>) {
+  dlib::Result<serialization::Deserialization<NonDefaultConstructable, InputIterator>> deserialize(InputIterator begin, EndIterator end, dlib::Type_arg<NonDefaultConstructable>) {
     OUTCOME_TRY(byte, (deserialize<std::byte>(std::move(begin), end)));
     return dlib::Deserialization<NonDefaultConstructable, InputIterator>{ { byte.val }, std::move(byte.iter)};
   }
@@ -61,10 +61,10 @@ namespace dlib {
 
 BOOST_AUTO_TEST_CASE(deserialize_arrays_no_default_constructor) {
   std::array input = to_byte_array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-  auto deserialize_std_array = dlib::deserialize<std::array<NonDefaultConstructable, 10>>(input.begin(), input.end());
+  auto deserialize_std_array = serialization::deserialize<std::array<NonDefaultConstructable, 10>>(input.begin(), input.end());
   BOOST_TEST((!!deserialize_std_array));
-  auto deserialize_raw_array = dlib::deserialize<NonDefaultConstructable[10]>(input.begin(), input.end());
+  auto deserialize_raw_array = serialization::deserialize<NonDefaultConstructable[10]>(input.begin(), input.end());
   BOOST_TEST((!!deserialize_raw_array));
-  auto too_short_deserialize_raw_array = dlib::deserialize<NonDefaultConstructable[10]>(++input.begin(), input.end());
+  auto too_short_deserialize_raw_array = serialization::deserialize<NonDefaultConstructable[10]>(++input.begin(), input.end());
   BOOST_TEST((!too_short_deserialize_raw_array));
 }

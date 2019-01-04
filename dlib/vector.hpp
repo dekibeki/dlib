@@ -8,7 +8,7 @@
 #include <dlib/util.hpp>
 #include <dlib/serialization.hpp>
 
-namespace dlib {
+namespace dlib::geometry {
   template<typename Distance, size_t n>
   class Vector {
   public:
@@ -21,8 +21,7 @@ namespace dlib {
     Vector(Vector const&) = default;
     Vector(Vector&&) = default;
 
-    constexpr Vector(std::initializer_list<Distance> in)
-    {
+    constexpr Vector(std::initializer_list<Distance> in) {
       const size_t min = common::vmin(in.size(), data_.size());
 
       std::copy_n(in.begin(), min, data_.begin());
@@ -93,18 +92,18 @@ namespace dlib {
   public:
     template<typename Distance, size_t n>
     constexpr bool operator()(Vector<Distance, n> const& a, Vector<Distance, n> const& b) const noexcept {
-     for (size_t i = 0; i < n; ++i) {
-       const bool less = static_cast<Cmp const&>(*this)(a[i], b[i]);
-       const bool greater = static_cast<Cmp const&>(*this)(b[i], a[i]);
+      for (size_t i = 0; i < n; ++i) {
+        const bool less = static_cast<Cmp const&>(*this)(a[i], b[i]);
+        const bool greater = static_cast<Cmp const&>(*this)(b[i], a[i]);
 
-       if (less && !greater) {
-         return true;
-       } else if (!less && greater) {
-         return false;
-       }
+        if (less && !greater) {
+          return true;
+        } else if (!less && greater) {
+          return false;
+        }
       }
 
-     return false; //equal
+      return false; //equal
     }
   };
 
@@ -128,7 +127,7 @@ namespace dlib {
     template<typename Distance, size_t minor_size_, size_t major_size_>
     class Matrix {
     public:
-      
+
       Distance& get(Major major, Minor minor) noexcept {
         return data_[major.val][minor.val];
       }
@@ -198,7 +197,7 @@ namespace dlib {
   template<typename Distance, size_t n, typename Scalar>
   Vector<Distance, n> scale(Vector<Distance, n> a, Scalar scalar) {
     Vector<Distance, n> returning;
-    
+
     for (size_t i = 0; i < n; ++i) {
       returning[i] = a[i] * scalar;
     }
@@ -220,7 +219,7 @@ namespace dlib {
   Distance length(Vector<Distance, n> a) {
     return std::sqrt(lengthSquared(a));
   }
-  
+
   template<typename Distance, size_t n>
   Distance dotScaled(Vector<Distance, n> a, Vector<Distance, n> b) {
     Distance returning = 0;
@@ -242,12 +241,12 @@ namespace dlib {
     return scale(of, dot(of, onto) / dot(onto, onto));
   }
 
-  template<template<typename,size_t,size_t> typename Matrix, typename Distance>
+  template<template<typename, size_t, size_t> typename Matrix, typename Distance>
   constexpr Distance determinant(Matrix<Distance, 1, 1> matrix) noexcept {
     return matrix.get(Major{ 0 }, Minor{ 0 });
   }
-  
-  template<template<typename,size_t,size_t> typename Matrix, typename Distance, size_t n>
+
+  template<template<typename, size_t, size_t> typename Matrix, typename Distance, size_t n>
   constexpr Distance determinant(Matrix<Distance, n, n> matrix) noexcept {
     Distance returning = 0;
 
@@ -273,11 +272,11 @@ namespace dlib {
   }
 
   template<typename Distance, size_t n>
-  constexpr Vector<Distance, n> getOrthogonal(std::array<Vector<Distance, n>, n-1> others) noexcept {
-    
+  constexpr Vector<Distance, n> getOrthogonal(std::array<Vector<Distance, n>, n - 1> others) noexcept {
+
     Vector<Distance, n> returning;
     ColumnMajorMatrix<Distance, n - 1, n - 1> matrix;
-    
+
     for (size_t i = 0; i < n; ++i) {
       for (size_t x = 0; x < i; ++x) {
         for (size_t y = 0; y < n - 1; ++y) {
@@ -293,7 +292,9 @@ namespace dlib {
     }
     return returning;
   }
+}
 
+namespace dlib::serialization {
   template<typename Distance, size_t n, typename OutputIterator>
   OutputIterator serialize(OutputIterator iter, geometry::Vector<Distance, n> const& vector) noexcept {
     for (size_t i = 0; i < n; ++i) {
@@ -325,7 +326,7 @@ namespace dlib {
 
     for (size_t major = 0; major < major_size; ++major) {
       for (size_t minor = 0; minor < minor_size; ++minor) {
-        auto writing = matrix.get(geometry::Major{ major }, geometry::Minor{ minor });
+        auto writing = matrix.get(Major{ major }, Minor{ minor });
         iter = serialize(std::move(iter), std::move(writing));
       }
     }
