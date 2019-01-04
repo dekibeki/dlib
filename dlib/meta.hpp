@@ -3,9 +3,9 @@
 #include <array>
 #include <type_traits>
 
-namespace dlib::utility {
+namespace dlib {
   template<typename T>
-  constexpr T vMin(T t1, T t2) {
+  constexpr T vMin(T t1, T t2) noexcept {
     if (t1 < t2) {
       return t1;
     } else {
@@ -14,7 +14,7 @@ namespace dlib::utility {
   }
 
   template<typename T>
-  constexpr T vMax(T t1, T t2) {
+  constexpr T vMax(T t1, T t2) noexcept {
     if (t1 > t2) {
       return t1;
     } else {
@@ -27,21 +27,19 @@ namespace dlib::utility {
     return n == static_cast<size_t>(maxValue);
   }
 
-  namespace impl {
-    namespace utility {
-      template<typename D, typename ...Args>
-      using ArrayTypeHelper = std::array<std::conditional_t<std::is_same_v<D, void>,
-        std::common_type<Args...>,
-        D>, sizeof...(Args)>;
-    }
+  namespace meta_impl {
+    template<typename D, typename ...Args>
+    using ArrayTypeHelper = std::array<std::conditional_t<std::is_same_v<D, void>,
+      std::common_type<Args...>,
+      D>, sizeof...(Args)>;
   }
 
   template<typename D = void, typename ...Args>
-  constexpr impl::utility::ArrayTypeHelper<D, Args...> makeArray(Args&&... args) noexcept {
-    return impl::utility::ArrayTypeHelper<D, Args...>{std::forward<Args>(args)...};
+  constexpr meta_impl::ArrayTypeHelper<D, Args...> makeArray(Args&&... args) noexcept {
+    return impl::ArrayTypeHelper<D, Args...>{std::forward<Args>(args)...};
   }
 
-  namespace impl {
+  namespace meta_impl {
     template<typename ...ListArgs>
     struct ConcatImpl;
 
@@ -91,31 +89,39 @@ namespace dlib::utility {
     struct ChangeContainedImpl;
   }
 
+  /*Simple variadic template list*/
   template<typename...>
   struct List {};
 
+  /*Simple placeholder type, does nothing, has nothing*/
   struct Placeholder {};
 
+  /*used to get a list object instead of a type*/
   template<typename ...Args>
   constexpr List<Args...> list = List<Args...>{};
 
+  /*Concatenates variadic tempaltes together*/
   template<typename ...ListArgs>
-  using Concat = typename impl::ConcatImpl<ListArgs..., List<>>::Value;
+  using Concat = typename meta_impl::ConcatImpl<ListArgs..., List<>>::Value;
 
+  /*checks if the list contains T*/
   template<typename T, typename ListArg>
-  constexpr bool contains = impl::ContainsImpl<T, ListArg>::value;
+  constexpr bool contains = meta_impl::ContainsImpl<T, ListArg>::value;
 
+  /*checks if T is in Args...*/
   template<typename T, typename ...Args>
   constexpr bool containsEx = contains<T, List<Args...>>;
 
+  /*Expands all lists in ListArg that are Expanding*/
   template<template<typename ...> typename Expanding, typename ListArg>
-  using Expand = typename impl::ExpandImpl<Expanding, ListArg>::Value;
+  using Expand = typename meta_impl::ExpandImpl<Expanding, ListArg>::Value;
 
+  /*Expands all lists in Args... that are Expanding*/
   template<template<typename ...> typename Expanding, typename ...Args>
   using ExpandEx = Expand<Expanding, List<Args...>>;
 
   template<template<typename, typename> typename Function, typename Nil, typename Args>
-  using LeftFold = typename impl::LeftFoldImpl<Function, Concat<Args, List<Nil>>>::Value;
+  using LeftFold = typename meta_impl::LeftFoldImpl<Function, Concat<Args, List<Nil>>>::Value;
 
   template<template<typename, typename> typename Function, typename Nil, typename ...Args>
   using LeftFoldEx = LeftFold<Function, Nil, List<Args...>>;
@@ -131,7 +137,7 @@ namespace dlib::utility {
   }
 
   template<template<typename, typename> typename Function, typename Nil, typename Args>
-  using RightFold = typename impl::RightFoldImpl<Function, Concat<Args, List<Nil>>>::Value;
+  using RightFold = typename meta_impl::RightFoldImpl<Function, Concat<Args, List<Nil>>>::Value;
 
   template<template<typename, typename> typename Function, typename Nil, typename ...Args>
   using RightFoldEx = RightFold<Function, Nil, List<Args...>>;
@@ -157,43 +163,43 @@ namespace dlib::utility {
   }
 
   template<template<typename> typename Predicate, typename ListArg>
-  using Filter = typename impl::FilterImpl<Predicate, ListArg>::Value;
+  using Filter = typename meta_impl::FilterImpl<Predicate, ListArg>::Value;
 
   template<template<typename> typename Predicate, typename ...Args>
   using FilterEx = Filter<Predicate, List<Args...>>;
 
   template<template<typename> typename Function, typename ListArg>
-  using Transform = typename impl::TransformImpl<Function, ListArg>::Value;
+  using Transform = typename meta_impl::TransformImpl<Function, ListArg>::Value;
 
   template<template<typename> typename Function, typename ...Args>
   using TransformEx = Transform<Function, List<Args...>>;
 
   template<typename ListArg>
-  using Unwrap = typename impl::UnwrapImpl<ListArg>::Value;
+  using Unwrap = typename meta_impl::UnwrapImpl<ListArg>::Value;
 
   template<template<typename ...> typename Wrapper, typename Arg>
-  constexpr bool isWrappedBy = impl::IsWrappedByImpl<Wrapper, Arg>::value;
+  constexpr bool isWrappedBy = meta_impl::IsWrappedByImpl<Wrapper, Arg>::value;
 
   template<typename ListArg>
-  constexpr size_t count = impl::CountImpl<ListArg>::value;
+  constexpr size_t count = meta_impl::CountImpl<ListArg>::value;
 
   template<auto val>
-  using ToIntegralConstant = typename impl::ToIntegralConstantImpl<val>::Value;
+  using ToIntegralConstant = typename meta_impl::ToIntegralConstantImpl<val>::Value;
 
   template<template<typename> typename Predicate, typename ListArg>
-  constexpr bool thereExists = impl::ThereExistsImpl<Predicate, ListArg>::value;
+  constexpr bool thereExists = meta_impl::ThereExistsImpl<Predicate, ListArg>::value;
 
   template<template<typename> typename Predicate, typename ...Args>
   constexpr bool thereExistsEx = thereExists<Predicate, List<Args...>>;
 
   template<template<typename> typename Predicate, typename ListArg>
-  constexpr bool forAll = impl::ForAllImpl<Predicate, ListArg>::value;
+  constexpr bool forAll = meta_impl::ForAllImpl<Predicate, ListArg>::value;
 
   template<template<typename> typename Predicate, typename ...Args>
   constexpr bool forAllEx = forAll<Predicate, List<Args...>>;
 
   template<size_t i, typename ListArg>
-  using Get = typename impl::GetImpl<i, ListArg>::Value;
+  using Get = typename meta_impl::GetImpl<i, ListArg>::Value;
 
   template<size_t i, typename ...Args>
   using GetEx = Get<i, List<Args...>>;
@@ -205,15 +211,21 @@ namespace dlib::utility {
   using FirstEx = First<List<Args...>>;
 
   template<template<typename ...> typename NewList, typename ListArg>
-  using ChangeContainer = typename impl::ChangeContainerImpl<NewList, ListArg>::Value;
+  using ChangeContainer = typename meta_impl::ChangeContainerImpl<NewList, ListArg>::Value;
 
   template<typename OldContained, typename NewContained>
-  using ChangeContained = typename impl::ChangeContainedImpl<NewContained, OldContained>::Value;
+  using ChangeContained = typename meta_impl::ChangeContainedImpl<NewContained, OldContained>::Value;
 
   template<typename OldContained, typename ...Args>
   using ChangeContainedEx = ChangeContained<OldContained, List<Args...>>;
 
-  namespace impl{
+  template<typename T>
+  struct Type_arg {};
+
+  template<typename T>
+  constexpr Type_arg<T> type_arg = Type_arg<T>{};
+
+  namespace meta_impl{
     template<template<typename ...> typename List, typename ...Args>
     struct ConcatImpl<List<Args...>> {
       using Value = List<Args...>;

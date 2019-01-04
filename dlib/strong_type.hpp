@@ -1,7 +1,7 @@
 #pragma once
 
 #include <type_traits>
-#include <dlib/utility.hpp>
+#include <dlib/meta.hpp>
 
 namespace dlib::strongValue {
 
@@ -10,7 +10,7 @@ namespace dlib::strongValue {
     struct ExpandTo;
 
     template<typename ...Args>
-    using NestedExpandTo = utility::ChangeContainer<ExpandTo, utility::ExpandEx<ExpandTo, Args...>>;
+    using NestedExpandTo = ChangeContainer<ExpandTo, ExpandEx<ExpandTo, Args...>>;
 
     template<typename Type, typename Options>
     struct StrongValue;
@@ -430,7 +430,7 @@ namespace dlib::strongValue {
       private:
         template<typename L, typename ...GivenArgs>
         static constexpr bool enabled_ = isStrongValue<L>
-          && std::is_same_v<utility::List<std::decay_t<Args>...>, utility::List<std::decay_t<GivenArgs>...>>
+          && std::is_same_v<List<std::decay_t<Args>...>, List<std::decay_t<GivenArgs>...>>
           && std::is_invocable_v<Operator, Args...>;
       public:
         template<typename L, typename ...GivenArgs, typename = std::enable_if_t<enabled_<L, GivenArgs...>>>
@@ -451,7 +451,7 @@ namespace dlib::strongValue {
         }
       };
 
-      using NullWrapping = NullWrappingImpl<utility::Placeholder>;
+      using NullWrapping = NullWrappingImpl<Placeholder>;
 
       template<size_t i>
       struct IthWrappingImpl {
@@ -459,13 +459,13 @@ namespace dlib::strongValue {
         struct Impl {
           template<typename ...Args>
           constexpr decltype(auto) operator()(Args&&... args) const {
-            return utility::GetEx<i, std::decay_t<Args>...>::wrap(Nested{}(std::forward<Args>(args)...));
+            return GetEx<i, std::decay_t<Args>...>::wrap(Nested{}(std::forward<Args>(args)...));
           }
         };
       };
 
       template<size_t i>
-      using IthWrapping = typename IthWrappingImpl<i>::template Impl<utility::Placeholder>;
+      using IthWrapping = typename IthWrappingImpl<i>::template Impl<Placeholder>;
 
       template<typename Wrapping>
       struct StaticWrappingImpl {
@@ -479,7 +479,7 @@ namespace dlib::strongValue {
       };
 
       template<typename Wrapping>
-      using StaticWrapping = typename StaticWrappingImpl<Wrapping>::template Impl<utility::Placeholder>;
+      using StaticWrapping = typename StaticWrappingImpl<Wrapping>::template Impl<Placeholder>;
 
       template<size_t i>
       struct IthReferenceWrappingImpl {
@@ -503,7 +503,7 @@ namespace dlib::strongValue {
       };
 
       template<size_t i>
-      using IthReferenceWrapping = typename IthReferenceWrappingImpl<i>::template Impl<utility::Placeholder>;
+      using IthReferenceWrapping = typename IthReferenceWrappingImpl<i>::template Impl<Placeholder>;
 
       template<typename Operator, typename DefaultWrapping>
       struct NullaryOp {
@@ -511,7 +511,7 @@ namespace dlib::strongValue {
         struct Ex;
 
         template<typename Wrapping = DefaultWrapping>
-        using Using = Ex<utility::ChangeContainedEx<Wrapping, NullaryImpl<Operator>>>;
+        using Using = Ex<ChangeContainedEx<Wrapping, NullaryImpl<Operator>>>;
       };
 
       template<typename Operator, typename DefaultWrapping>
@@ -520,7 +520,7 @@ namespace dlib::strongValue {
         struct Ex;
 
         template<typename Arg, typename Wrapping = DefaultWrapping>
-        using Using = Ex<utility::ChangeContainedEx<Wrapping, RightOfImpl<Operator, Arg>>>;
+        using Using = Ex<ChangeContainedEx<Wrapping, RightOfImpl<Operator, Arg>>>;
       };
 
       template<typename Operator, typename DefaultWrapping>
@@ -529,13 +529,13 @@ namespace dlib::strongValue {
         struct Ex;
 
         template<typename Right, typename Wrapping = DefaultWrapping>
-        using LeftOf = Ex<utility::ChangeContainedEx<Wrapping, LeftOfImpl<Operator, Right>>>;
+        using LeftOf = Ex<ChangeContainedEx<Wrapping, LeftOfImpl<Operator, Right>>>;
 
         template<typename Left, typename Wrapping = DefaultWrapping>
-        using RightOf = Ex<utility::ChangeContainedEx<Wrapping, RightOfImpl<Operator, Left>>>;
+        using RightOf = Ex<ChangeContainedEx<Wrapping, RightOfImpl<Operator, Left>>>;
 
         template<typename Wrapping = DefaultWrapping>
-        using Self = Ex<utility::ChangeContainedEx<Wrapping, SelfImpl<Operator>>>;
+        using Self = Ex<ChangeContainedEx<Wrapping, SelfImpl<Operator>>>;
       };
 
       template<typename Operator>
@@ -633,7 +633,7 @@ namespace dlib::strongValue {
   namespace impl {
 
     template<typename ArgsConstructable, typename Options>
-    using AllowConstructor = std::enable_if_t <utility::contains<ArgsConstructable, Options>>;
+    using AllowConstructor = std::enable_if_t <contains<ArgsConstructable, Options>>;
 
     template<bool>
     struct DisallowDestructorImpl;
@@ -650,7 +650,7 @@ namespace dlib::strongValue {
 
     template<typename Options>
     using DisallowDestructor =
-      DisallowDestructorImpl<utility::contains<NoDestructor, Options>>;
+      DisallowDestructorImpl<contains<NoDestructor, Options>>;
 
     template<bool>
     struct AllowCopyImpl;
@@ -670,7 +670,7 @@ namespace dlib::strongValue {
     };
 
     template<typename Options>
-    using AllowCopy = AllowCopyImpl<utility::contains<Copy, Options>>;
+    using AllowCopy = AllowCopyImpl<contains<Copy, Options>>;
 
     template<bool>
     struct AllowMoveImpl;
@@ -690,18 +690,18 @@ namespace dlib::strongValue {
     };
 
     template<typename Options>
-    using AllowMove = AllowMoveImpl<utility::contains<Move, Options>>;
+    using AllowMove = AllowMoveImpl<contains<Move, Options>>;
 
     template<template<typename> typename Option>
     struct GetFunctorsHelper {
       template<typename T>
-      using Value = utility::ToIntegralConstant<utility::isWrappedBy<Option, T>>;
+      using Value = ToIntegralConstant<isWrappedBy<Option, T>>;
     };
 
     template<template<typename> typename Option, typename Options>
-    using GetFunctors = utility::Transform<
-      utility::First,
-      utility::Filter<GetFunctorsHelper<Option>::template Value, Options>>;
+    using GetFunctors = Transform<
+      First,
+      Filter<GetFunctorsHelper<Option>::template Value, Options>>;
 
     template<typename Target, typename Type>
     struct AllowConversionToHelper {
@@ -712,12 +712,12 @@ namespace dlib::strongValue {
     };
 
     template<typename Target, typename Type, typename Options>
-    using AllowConversionTo = utility::First<utility::Filter<AllowConversionToHelper<Target, Type>::template Value, GetFunctors<ConvertToEx, Options>>>;
+    using AllowConversionTo = First<Filter<AllowConversionToHelper<Target, Type>::template Value, GetFunctors<ConvertToEx, Options>>>;
 
     template<typename StrongValueArg>
     struct GetStrongValueInfo {
       using Type = StrongValueArg;
-      using Options = utility::List<>;
+      using Options = List<>;
     };
 
     template<typename Type_, typename Options_>
@@ -739,7 +739,7 @@ namespace dlib::strongValue {
     };
 
     template<template<typename> typename Option, typename ...Ts>
-    using GetFunctor = utility::First<utility::Filter<GetMatchingFunctorHelper<Ts...>::template Value, GetFunctors<Option, utility::Concat<GetOptions<Ts>...>>>>;
+    using GetFunctor = First<Filter<GetMatchingFunctorHelper<Ts...>::template Value, GetFunctors<Option, Concat<GetOptions<Ts>...>>>>;
 
     template<typename Type, typename Options>
     struct StrongValue :
@@ -1034,5 +1034,5 @@ namespace dlib::strongValue {
   }
 
   template<typename Type, typename ...Options>
-  using StrongValue = impl::StrongValue<Type, utility::ExpandEx<impl::ExpandTo, Options...>>;
+  using StrongValue = impl::StrongValue<Type, ExpandEx<impl::ExpandTo, Options...>>;
 }

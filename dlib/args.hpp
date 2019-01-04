@@ -1,13 +1,10 @@
 #pragma once
 
 #include <type_traits>
-#include <dlib/utility.hpp>
+#include <dlib/meta.hpp>
 
-namespace dlib::args {
-  namespace impl {
-    template<typename Type, typename ...Options>
-    constexpr bool contains = (false || ... || ::std::is_same_v<std::decay_t<Type>, ::std::decay_t<Options>>);
-
+namespace dlib {
+  namespace arg_impl {
     template<template<typename> typename Target, typename Default, typename ...Options>
     struct GetImpl;
 
@@ -28,14 +25,26 @@ namespace dlib::args {
       static constexpr bool found = true;
     };
 
-    template<typename Type, typename First, typename ...Rest>
-    constexpr auto get(First&& first, Rest&&... rest) noexcept {
-      constexpr bool isSame = ::std::is_same_v<Type, std::decay_t<First>>;
+    template<typename Type, typename Checking>
+    constexpr bool is_get = std::is_same_v<Type, std::decay_t<Checking>>;
+    template<template<typename> typename Type, typename Checking>
+    constexpr bool is_vget = isWrappedBy<Type, std::decay_t<Checking>>;
 
-      if constexpr (isSame) {
+    template<typename Type, typename First, typename ...Rest>
+    constexpr decltype(auto) get(First&& first, Rest&&... rest) noexcept {
+      if constexpr (is_get<Type, First>) {
         return std::forward<First>(first);
       } else {
         return get<Type>(std::forward<Rest>(rest)...);
+      }
+    }
+
+    template<template<typename> typename Type, typename First, typename ...Rest>
+    constexpr decltype(auto) vget(First&& first, Rest&&... rest) noexcept {
+      if constexpr (is_vget<Type, First>) {
+        return std::forward<First>(first);
+      } else {
+        return vget<Type>(std::forward<Rest>(rest)...);
       }
     }
   }
@@ -63,24 +72,55 @@ namespace dlib::args {
   ::dlib::option::getDefaulted<Initial>(Initial{5},std::forward<Ins>(ins)...);
   */
 
-  template<typename Type, typename Fallback, typename ...Options>
-  constexpr decltype(auto) getDefaulted(Fallback&& fallback, Options&&... options) {
+  template<typename Tag = void>
+  struct Arg {
+    template<typename T>
+    struct Holder {
+      T val;
+    };
+  };
 
-    if constexpr(impl::contains<Type,Options...>) {
-      return impl::get<Type>(std::forward<Options>(options)...);
+  template<typename Type, typename ...Options>
+  constexpr bool contains_arg = (false || ... || arg_impl::is_get<Type, Options>);
+
+  template<template<typename> typename Type, typename ...Options>
+  constexpr bool contains_varg = (false || ... || arg_impl::is_vget<Type, Options>);
+
+  template<typename Type, typename Fallback, typename ...Options>
+  constexpr decltype(auto) get_arg_defaulted(Fallback&& fallback, Options&&... options) {
+
+    if constexpr(contains_arg<Type,Options...>) {
+      return arg_impl::get<Type>(std::forward<Options>(options)...);
     }  else {
       return std::forward<Fallback>(fallback);
     } 
+  }
 
-    return impl::get<Type>(std::forward<Type>(fallback), std::forward<Options>(options)...);
+  template<template<typename> typename Type, typename Fallback, typename ...Options>
+  constexpr decltype(auto) get_varg_defaulted(Fallback&& fallback, Options&&... options) {
+
+    if constexpr (contains_varg<Type, Options...>) {
+      return arg_impl::vget<Type>(std::forward<Options>(options)...);
+    } else {
+      return std::forward<Fallback>(fallback);
+    }
   }
 
   template<typename Type, typename ...Options>
-  constexpr decltype(auto) get(Options&&... options) {
-    static_assert(impl::contains<Type,Options...>,
+  constexpr decltype(auto) get_arg(Options&&... options) {
+    static_assert(contains_arg<Type,Options...>,
       "The type we are looking for ('Type') was not found in Options...");
-    if constexpr(impl::contains<Type, Options...>) { //to make error messages a bit cleaner
-      return impl::get<Type>(std::forward<Options>(options)...);
+    if constexpr(contains_arg<Type, Options...>) { //to make error messages a bit cleaner
+      return arg_impl::get<Type>(std::forward<Options>(options)...);
+    }
+  }
+
+  template<template<typename> typename Type, typename ...Options>
+  constexpr decltype(auto) get_varg(Options&&... options) {
+    static_assert(contains_varg<Type, Options...>,
+      "The type we are looking for ('Type') was not found in Options...");
+    if constexpr (contains_varg<Type, Options...>) { //to make error messages a bit cleaner
+      return arg_impl::vget<Type>(std::forward<Options>(options)...);
     }
   }
 
@@ -102,14 +142,9 @@ namespace dlib::args {
   */
 
   template<template<typename> typename Target, typename Default, typename ...Options>
-  using GetDefaulted = typename impl::GetImpl<Target, Default, Options...>::type;
+  using Get_arg_defaulted = typename arg_impl::GetImpl<Target, Default, Options...>::type;
 
   template<template<typename> typename Target, typename ...Options>
-  using Get = ::std::enable_if_t<impl::GetImpl<Target, void, Options...>::found,
-    typename impl::GetImpl<Target, void, Options...>::type>;
-
-  template<typename Self, typename ...Options>
-  using EnableIfNotCopyOrMove = std::enable_if_t <
-    !(sizeof...(Options) == 1 &&
-      std::is_same_v<Self, std::decay_t<utility::FirstEx<Options...>>>)>;
+  using Get_arg = ::std::enable_if_t<arg_impl::GetImpl<Target, void, Options...>::found,
+    typename arg_impl::GetImpl<Target, void, Options...>::type>;
 }
