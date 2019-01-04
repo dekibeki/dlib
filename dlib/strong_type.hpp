@@ -3,45 +3,72 @@
 #include <type_traits>
 #include <dlib/meta.hpp>
 
+/*
+
+  Used for creating strong types.
+  
+  All operations including construction are disallowed be default, and must be enabled
+  by specifying them in the template args. A tag to make each template a unique type can be given by any type, as these allowed operations are pulled out of the variadic template args.
+
+*/
+
 namespace dlib::strongValue {
 
   namespace impl {
+    /*
+      This is used to allow one option to allow multiple operations.
+      e.g. <A, B, ExpandTo<C, ExpandTo<D, E>>> is seen as <A, B, C, D, E> when looking
+      for allowed operations
+    */
     template<typename ...>
     struct ExpandTo;
 
+    /*
+      
+    */
     template<typename ...Args>
     using NestedExpandTo = ChangeContainer<ExpandTo, ExpandEx<ExpandTo, Args...>>;
 
+    /* Forward decl of the impl version with no variadic*/
     template<typename Type, typename Options>
     struct StrongValue;
 
+    /* Helper class to find if something is a strong value*/
     template<typename T>
     struct IsStrongValue {
       static constexpr bool value = false;
     };
 
+    /* Helper class to find it something is a strong value, partial spec*/
     template<typename Type, typename Options>
     struct IsStrongValue<StrongValue<Type, Options>> {
       static constexpr bool value = true;
     };
 
+    /*Finds if something is a strong value*/
     template<typename T>
     constexpr bool isStrongValue = IsStrongValue<std::decay_t<T>>::value;
 
+    /*Declaration of a class to pull type and options out of a strong value*/
     template<typename T>
     struct StrongValueInfo;
 
+    /*Partial spec to pull type and options out of a strong value*/
     template<typename Type_, typename Options_>
     struct StrongValueInfo<StrongValue<Type_, Options_>> {
       using Type = Type_;
       using Options = Options_;
     };
 
+    /* Helper typedef to get type of a strong value*/
     template<typename T>
     using StrongValueType = typename StrongValueInfo<std::decay_t<T>>::Type;
 
+    /* Helper typedef to get the options of a strong value*/
     template<typename T>
     using StrongValueOptions = typename StrongValueInfo<std::decay_t<T>>::Options;
+
+    /*Unwraps a strong value if it is one, otherwise returns t*/
     template<typename T>
     constexpr decltype(auto) unwrap(T&& t) noexcept {
       if constexpr(isStrongValue<T>) {
@@ -51,614 +78,671 @@ namespace dlib::strongValue {
       }
     }
 
+    /*Gets the unwrapped (the type if its a strong value, otherwise T) type of T*/
     template<typename T>
     using UnWrap = decltype(unwrap(std::declval<T>()));
 
     namespace defaults {
+      /*
+        These call the operators on the given args
+      */
+      namespace operators {
+        /*Default conversion operator functor*/
+        template<typename To>
+        struct Converter {
+          template<typename From, typename = decltype(static_cast<To>(std::declval<From>()))>
+          To operator()(From&& t) {
+            return static_cast<To>(t);
+          }
+        };
+        /*Default < operator functor*/
+        struct Less {
+          template<typename L, typename R, typename = decltype(std::declval<L>() < std::declval<R>())>
+              constexpr decltype(auto) operator()(L&& l, R&& r) const {
+                return l < r;
+              }
+        };
+        /*Default > operator functor*/
+        struct Greater {
+          template<typename L, typename R, typename = decltype(std::declval<L>() > std::declval<R>())>
+                    constexpr decltype(auto) operator()(L&& l, R&& r) const {
+                      return l > r;
+                    }
+        };
+        /*Default <= operator functor*/
+        struct LessEqual {
+          template<typename L, typename R, typename = decltype(std::declval<L>() <= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return  l <= r;
+          }
+        };
+        /*Default >= operator functor*/
+        struct GreaterEqual {
+          template<typename L, typename R, typename = decltype(std::declval<L>() >= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l >= r;
+          }
+        };
+        /*Default == operator functor*/
+        struct Equal {
+          template<typename L, typename R, typename = decltype(std::declval<L>() == std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l == r;
+          }
+        };
+        /*Default != operator functor*/
+        struct NotEqual {
+          template<typename L, typename R, typename = decltype(std::declval<L>() != std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l != r;
+          }
+        };
+        /* Default = operator functor*/
+        struct Assign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() = std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l = r;
+          }
+        };
+        /*Default + operator functor*/
+        struct Add {
+          template<typename L, typename R, typename = decltype(std::declval<L>() + std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l + r;
+          }
+        };
+        /*Default += operator functor*/
+        struct AddAssign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() += std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l += r;
+          }
+        };
+        /*Default - operator functor*/
+        struct Sub {
+          template<typename L, typename R, typename = decltype(std::declval<L>() - std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l - r;
+          }
+        };
+        /*Default -= operator functor*/
+        struct SubAssign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() -= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l -= r;
+          }
+        };
+        /*Default * operator functor*/
+        struct Mult {
+          template<typename L, typename R, typename = decltype(std::declval<L>() * std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l * r;
+          }
+        };
+        /*Default *= operator functor*/
+        struct MultAssign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() *= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l *= r;
+          }
+        };
+        /*Default / operator functor*/
+        struct Div {
+          template<typename L, typename R, typename = decltype(std::declval<L>() / std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l / r;
+          }
+        };
+        /*Default /= operator functor*/
+        struct DivAssign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() /= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l /= r;
+          }
+        };
+        /*Default % operator functor*/
+        struct Mod {
+          template<typename L, typename R, typename = decltype(std::declval<L>() % std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l % r;
+          }
+        };
+        /*Default %= operator functor*/
+        struct ModAssign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() %= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l %= r;
+          }
+        };
+        /*Default & operator functor*/
+        struct BinaryAnd {
+          template<typename L, typename R, typename = decltype(std::declval<L>() & std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l & r;
+          }
+        };
+        /*Default &= operator functor*/
+        struct BinaryAndAssign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() &= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l &= r;
+          }
+        };
+        /*Default | operator functor*/
+        struct BinaryOr {
+          template<typename L, typename R, typename = decltype(std::declval<L>() | std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l | r;
+          }
+        };
+        /*Default |= operator functor*/
+        struct BinaryOrAssign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() |= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l |= r;
+          }
+        };
+        /*Default ^ operator functor*/
+        struct Xor {
+          template<typename L, typename R, typename = decltype(std::declval<L>() ^ std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l ^ r;
+          }
+        };
+        /*Default ^= operator functor*/
+        struct XorAssign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() ^= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l ^= r;
+          }
+        };
+        /*Default << operator functor*/
+        struct LeftShift {
+          template<typename L, typename R, typename = decltype(std::declval<L>() << std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l << r;
+          }
+        };
+        /*Default <<= operator functor*/
+        struct LeftShiftAssign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() <<= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l <<= r;
+          }
+        };
+        /*Default >> operator functor*/
+        struct RightShift {
+          template<typename L, typename R, typename = decltype(std::declval<L>() >> std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l >> r;
+          }
+        };
+        /*Default >>= operator functor*/
+        struct RightShiftAssign {
+          template<typename L, typename R, typename = decltype(std::declval<L>() >>= std::declval<R>())>
+          constexpr decltype(auto) operator()(L&&l, R&& r) const {
+            return l >>= r;
+          }
+        };
+        /*Default ~ operator functor*/
+        struct BinaryNot {
+          template<typename L, typename = decltype(~std::declval<L>())>
+          constexpr decltype(auto) operator()(L&&l) const {
+            return ~l;
+          }
+        };
+        /*Default unary + (e.g. +strongType) operator functor*/
+        struct UnaryPlus {
+          template<typename L, typename = decltype(+std::declval<L>())>
+          constexpr decltype(auto) operator()(L&&l) const {
+            return +l;
+          }
+        };
+        /*Default unary - (e.g. -strongType) operator functor*/
+        struct UnaryMinus {
+          template<typename L, typename = decltype(-std::declval<L>())>
+          constexpr decltype(auto) operator()(L&&l) const {
+            return -l;
+          }
+        };
+        /*Default [] operator functor*/
+        struct Subscript {
+          template<typename L, typename R, typename = decltype(std::declval<L>()[std::declval<R>()])>
+          constexpr decltype(auto) operator()(L&& l, R && r) const {
+            return l[r];
+          }
+        };
+        /*Default unary * / indirection (e.g. *strongType) operator functor */
+        struct Indirection {
+          template<typename L, typename = decltype(*std::declval<L>())>
+          constexpr decltype(auto) operator()(L&& l) const {
+            return *l;
+          }
+        };
+        /*Default pre ++ (e.g. ++strongType) operator functor*/
+        struct PreIncrement {
+          template<typename L, typename = decltype(++std::declval<L>())>
+          constexpr decltype(auto) operator()(L&&l) const {
+            return ++l;
+          }
+        };
+        /*Default pre -- (e.g. --strongType) operator functor*/
+        struct PreDecrement {
+          template<typename L, typename = decltype(--std::declval<L>())>
+          constexpr decltype(auto) operator()(L&&l) const {
+            return --l;
+          }
+        };
+        /*Default post ++ (e.g. strongType++) operator functor*/
+        struct PostIncrement {
+          template<typename L, typename = decltype(std::declval<L>()++)>
+          constexpr decltype(auto) operator()(L&&l) const {
+            return l++;
+          }
+        };
+        /*Default post -- (e.g. strongType--) operator functor*/
+        struct PostDecrement {
+          template<typename L, typename = decltype(std::declval<L>()--)>
+          constexpr decltype(auto) operator()(L&&l) const {
+            return l--;
+          }
+        };
+        /*Default ! operator functor*/
+        struct LogicalNot {
+          template<typename L, typename = decltype(!std::declval<L>())>
+          constexpr decltype(auto) operator()(L&& l) const {
+            return !l;
+          }
+        };
+        /*Default && operator functor*/
+        struct LogicalAnd {
+          template<typename L, typename R, typename = decltype(std::declval<L>() && std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return l && r;
+          }
+        };
+        /*Default || operator functor*/
+        struct LogicalOr {
+          template<typename L, typename R, typename = decltype(std::declval<L>() || std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const noexcept(std::declval<L>() || std::declval<R>()) {
+            return l || r;
+          }
+        };
+        /*Default & operator functor*/
+        struct AddressOf {
+          template<typename L, typename = decltype(&std::declval<L>())>
+          constexpr decltype(auto) operator()(L&& l) const {
+            return &l;
+          }
+        };
+        /*Default -> operator functor*/
+        struct MemberOfPointer {
+          template<typename L, typename = std::enable_if_t<std::is_pointer_v<std::decay_t<L>>>>
+          constexpr decltype(auto) operator()(L&& l) const {
+            return l;
+          }
 
-      template<typename To>
-      struct Converter {
-        template<typename From, typename = decltype(static_cast<To>(std::declval<From>()))>
-        To operator()(From&& t) {
-          return static_cast<To>(t);
-        }
-      };
-
-      struct Less {
-        template<typename L, typename R, typename = decltype(std::declval<L>() < std::declval<R>())>
-            constexpr decltype(auto) operator()(L&& l, R&& r) const {
-              return l < r;
-            }
-      };
-
-      struct Greater {
-        template<typename L, typename R, typename = decltype(std::declval<L>() > std::declval<R>())>
-                  constexpr decltype(auto) operator()(L&& l, R&& r) const {
-                    return l > r;
-                  }
-      };
-
-      struct LessEqual {
-        template<typename L, typename R, typename = decltype(std::declval<L>() <= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return  l <= r;
-        }
-      };
-
-      struct GreaterEqual {
-        template<typename L, typename R, typename = decltype(std::declval<L>() >= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l >= r;
-        }
-      };
-
-      struct Equal {
-        template<typename L, typename R, typename = decltype(std::declval<L>() == std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l == r;
-        }
-      };
-
-      struct NotEqual {
-        template<typename L, typename R, typename = decltype(std::declval<L>() != std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l != r;
-        }
-      };
-
-      struct Assign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() = std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l = r;
-        }
-      };
-
-      struct Add {
-        template<typename L, typename R, typename = decltype(std::declval<L>() + std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l + r;
-        }
-      };
-
-      struct AddAssign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() += std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l += r;
-        }
-      };
-
-      struct Sub {
-        template<typename L, typename R, typename = decltype(std::declval<L>() - std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l - r;
-        }
-      };
-
-      struct SubAssign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() -= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l -= r;
-        }
-      };
-
-      struct Mult {
-        template<typename L, typename R, typename = decltype(std::declval<L>() * std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l * r;
-        }
-      };
-
-      struct MultAssign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() *= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l *= r;
-        }
-      };
-
-      struct Div {
-        template<typename L, typename R, typename = decltype(std::declval<L>() / std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l / r;
-        }
-      };
-
-      struct DivAssign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() /= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l /= r;
-        }
-      };
-
-      struct Mod {
-        template<typename L, typename R, typename = decltype(std::declval<L>() % std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l % r;
-        }
-      };
-
-      struct ModAssign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() %= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l %= r;
-        }
-      };
-
-      struct BinaryAnd {
-        template<typename L, typename R, typename = decltype(std::declval<L>() & std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l & r;
-        }
-      };
-
-      struct BinaryAndAssign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() &= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l &= r;
-        }
-      };
-
-      struct BinaryOr {
-        template<typename L, typename R, typename = decltype(std::declval<L>() | std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l | r;
-        }
-      };
-
-      struct BinaryOrAssign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() |= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l |= r;
-        }
-      };
-
-      struct Xor {
-        template<typename L, typename R, typename = decltype(std::declval<L>() ^ std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l ^ r;
-        }
-      };
-
-      struct XorAssign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() ^= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l ^= r;
-        }
-      };
-
-      struct LeftShift {
-        template<typename L, typename R, typename = decltype(std::declval<L>() << std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l << r;
-        }
-      };
-
-      struct LeftShiftAssign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() <<= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l <<= r;
-        }
-      };
-
-      struct RightShift {
-        template<typename L, typename R, typename = decltype(std::declval<L>() >> std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l >> r;
-        }
-      };
-
-      struct RightShiftAssign {
-        template<typename L, typename R, typename = decltype(std::declval<L>() >>= std::declval<R>())>
-        constexpr decltype(auto) operator()(L&&l, R&& r) const {
-          return l >>= r;
-        }
-      };
-
-      struct BinaryNot {
-        template<typename L, typename = decltype(~std::declval<L>())>
-        constexpr decltype(auto) operator()(L&&l) const {
-          return ~l;
-        }
-      };
-
-      struct UnaryPlus {
-        template<typename L, typename = decltype(+std::declval<L>())>
-        constexpr decltype(auto) operator()(L&&l) const {
-          return +l;
-        }
-      };
-
-      struct UnaryMinus {
-        template<typename L, typename = decltype(-std::declval<L>())>
-        constexpr decltype(auto) operator()(L&&l) const {
-          return -l;
-        }
-      };
-
-      struct Subscript {
-        template<typename L, typename R, typename = decltype(std::declval<L>()[std::declval<R>()])>
-        constexpr decltype(auto) operator()(L&& l, R && r) const {
-          return l[r];
-        }
-      };
-
-      struct Indirection {
-        template<typename L, typename = decltype(*std::declval<L>())>
-        constexpr decltype(auto) operator()(L&& l) const {
-          return *l;
-        }
-      };
-
-      struct PreIncrement {
-        template<typename L, typename = decltype(++std::declval<L>())>
-        constexpr decltype(auto) operator()(L&&l) const {
-          return ++l;
-        }
-      };
-
-      struct PreDecrement {
-        template<typename L, typename = decltype(--std::declval<L>())>
-        constexpr decltype(auto) operator()(L&&l) const {
-          return --l;
-        }
-      };
-
-      struct PostIncrement {
-        template<typename L, typename = decltype(std::declval<L>()++)>
-        constexpr decltype(auto) operator()(L&&l) const {
-          return l++;
-        }
-      };
-
-      struct PostDecrement {
-        template<typename L, typename = decltype(std::declval<L>()--)>
-        constexpr decltype(auto) operator()(L&&l) const {
-          return l--;
-        }
-      };
-
-      struct LogicalNot {
-        template<typename L, typename = decltype(!std::declval<L>())>
-        constexpr decltype(auto) operator()(L&& l) const {
-          return !l;
-        }
-      };
-
-      struct LogicalAnd {
-        template<typename L, typename R, typename = decltype(std::declval<L>() && std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return l && r;
-        }
-      };
-
-      struct LogicalOr {
-        template<typename L, typename R, typename = decltype(std::declval<L>() || std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const noexcept(std::declval<L>() || std::declval<R>()) {
-          return l || r;
-        }
-      };
-
-      struct AddressOf {
-        template<typename L, typename = decltype(&std::declval<L>())>
-        constexpr decltype(auto) operator()(L&& l) const {
-          return &l;
-        }
-      };
-
-      struct MemberOfPointer {
-        template<typename L, typename = std::enable_if_t<std::is_pointer_v<std::decay_t<L>>>>
-        constexpr decltype(auto) operator()(L&& l) const {
-          return l;
-        }
-
-        template<typename L, typename = std::enable_if_t<!std::is_pointer_v<std::decay_t<L>>>, typename = decltype(std::declval<L>().operator->())>
-        constexpr decltype(auto) operator()(L&& l) const {
-          return l.operator->();
-        }
-      };
-
-      struct FunctionCall {
-        template<typename L, typename ...Rest, typename = std::enable_if_t<std::is_invocable_v<L, Rest...>>>
-        constexpr decltype(auto) operator()(L&& l, Rest&&... rest) const {
-          return l(std::forward<Rest>(rest)...);
-        }
-      };
-
-      struct Comma {
-        template<typename L, typename R, typename = decltype(std::declval<L>(), std::declval<R>())>
-        constexpr decltype(auto) operator()(L&& l, R&& r) {
-          return l, r;
-        }
-      };
-
-      template<typename Operator, typename Right>
-      struct LeftOfImpl {
-      private:
-        template<typename L, typename R>
-        static constexpr bool enabled_ = isStrongValue<L>
-          && std::is_same_v<std::decay_t<R>, Right>
-          && std::is_invocable_v<Operator, UnWrap<L>, UnWrap<R>>;
-      public:
-        template<typename L, typename R, typename = std::enable_if_t<enabled_<L, R>>>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return Operator{}(unwrap(std::forward<L>(l)), unwrap(std::forward<R>(r)));
-        }
-      };
-
-      template<typename Operator, typename Left>
-      struct RightOfImpl {
-      private:
-        template<typename L, typename R>
-        static constexpr bool enabled_ = isStrongValue<R>
-          && std::is_same_v<std::decay_t<L>, Left>
-          && std::is_invocable_v<Operator, UnWrap<L>, UnWrap<R>>;
-      public:
-        template<typename L, typename R, typename = std::enable_if_t<enabled_<L, R>>>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return Operator{}(unwrap(std::forward<L>(l)), unwrap(std::forward<R>(r)));
-        }
-      };
-
-      template<typename Operator>
-      struct SelfImpl {
-      private:
-        template<typename L, typename R>
-        static constexpr bool enabled_ = isStrongValue<L>
-          && std::is_same_v<std::decay_t<L>, std::decay_t<R>>
-          && std::is_invocable_v<Operator, UnWrap<L>, UnWrap<R>>;
-      public:
-        template<typename L, typename R, typename = std::enable_if_t<enabled_<L, R>>>
-        constexpr decltype(auto) operator()(L&& l, R&& r) const {
-          return Operator{}(unwrap(std::forward<L>(l)), unwrap(std::forward<R>(r)));
-        }
-      };
-
-      template<typename Operator>
-      struct NullaryImpl {
-      private:
-        template<typename L>
-        static constexpr bool enabled_ = isStrongValue<L>
-          && std::is_invocable_v<Operator, UnWrap<L>>;
-      public:
-        template<typename L, typename = std::enable_if_t<enabled_<L>>>
-        constexpr decltype(auto) operator()(L&& l) const {
-          return Operator{}(unwrap(std::forward<L>(l)));
-        }
-      };
-
-      template<typename Operator, typename ...Args>
-      struct VariadicImpl {
-      private:
-        template<typename L, typename ...GivenArgs>
-        static constexpr bool enabled_ = isStrongValue<L>
-          && std::is_same_v<List<std::decay_t<Args>...>, List<std::decay_t<GivenArgs>...>>
-          && std::is_invocable_v<Operator, Args...>;
-      public:
-        template<typename L, typename ...GivenArgs, typename = std::enable_if_t<enabled_<L, GivenArgs...>>>
-        constexpr decltype(auto) operator()(L&& l, GivenArgs&&... rest) const {
-          return Operator{}(std::forward<L>(l), std::forward<GivenArgs>(rest)...);
-        }
-      };
-      template<typename Nested>
-      struct NullWrappingImpl {
-      private:
-        template<typename ...Args>
-        static constexpr bool enabled_ =
-          std::is_invocable_v<Nested, Args...>;
-      public:
-        template<typename ...Args, typename = std::enable_if_t<enabled_<Args...>>>
-        constexpr decltype(auto) operator()(Args&&... args) const {
-          return Nested{}(std::forward<Args>(args)...);
-        }
-      };
-
-      using NullWrapping = NullWrappingImpl<Placeholder>;
-
-      template<size_t i>
-      struct IthWrappingImpl {
+          template<typename L, typename = std::enable_if_t<!std::is_pointer_v<std::decay_t<L>>>, typename = decltype(std::declval<L>().operator->())>
+          constexpr decltype(auto) operator()(L&& l) const {
+            return l.operator->();
+          }
+        };
+        /*Default () operator functor*/
+        struct FunctionCall {
+          template<typename L, typename ...Rest, typename = std::enable_if_t<std::is_invocable_v<L, Rest...>>>
+          constexpr decltype(auto) operator()(L&& l, Rest&&... rest) const {
+            return l(std::forward<Rest>(rest)...);
+          }
+        };
+        /*Default , operator functor*/
+        struct Comma {
+          template<typename L, typename R, typename = decltype(std::declval<L>(), std::declval<R>())>
+          constexpr decltype(auto) operator()(L&& l, R&& r) {
+            return l, r;
+          }
+        };
+      }
+      /*
+        These allow or disallow operators based on type signatures.
+        e.g. An int + char is allowed in C++, but not having an appropriate filter disallows it
+      */
+      namespace filters {
+        /*Allows operations with a specific type on the right of the operator*/
+        template<typename Operator, typename Right>
+        struct EnableOperatorIfRightIs {
+        private:
+          template<typename L, typename R>
+          static constexpr bool enabled_ = isStrongValue<L>
+            && std::is_same_v<std::decay_t<R>, Right>
+            && std::is_invocable_v<Operator, UnWrap<L>, UnWrap<R>>;
+        public:
+          template<typename L, typename R, typename = std::enable_if_t<enabled_<L, R>>>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return Operator{}(unwrap(std::forward<L>(l)), unwrap(std::forward<R>(r)));
+          }
+        };
+        /*Allows operations with a specific type on the left of the operator*/
+        template<typename Operator, typename Left>
+        struct EnableOperatorIfLeftIs {
+        private:
+          template<typename L, typename R>
+          static constexpr bool enabled_ = isStrongValue<R>
+            && std::is_same_v<std::decay_t<L>, Left>
+            && std::is_invocable_v<Operator, UnWrap<L>, UnWrap<R>>;
+        public:
+          template<typename L, typename R, typename = std::enable_if_t<enabled_<L, R>>>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return Operator{}(unwrap(std::forward<L>(l)), unwrap(std::forward<R>(r)));
+          }
+        };
+        /*Allows operations if both types are the same (same type as self)*/
+        template<typename Operator>
+        struct EnableOperatorIfBothSame {
+        private:
+          template<typename L, typename R>
+          static constexpr bool enabled_ = isStrongValue<L>
+            && std::is_same_v<std::decay_t<L>, std::decay_t<R>>
+            && std::is_invocable_v<Operator, UnWrap<L>, UnWrap<R>>;
+        public:
+          template<typename L, typename R, typename = std::enable_if_t<enabled_<L, R>>>
+          constexpr decltype(auto) operator()(L&& l, R&& r) const {
+            return Operator{}(unwrap(std::forward<L>(l)), unwrap(std::forward<R>(r)));
+          }
+        };
+        /*Allows operations with a strong value*/
+        template<typename Operator>
+        struct EnableOperatorIfStrongValue {
+        private:
+          template<typename L>
+          static constexpr bool enabled_ = isStrongValue<L>
+            && std::is_invocable_v<Operator, UnWrap<L>>;
+        public:
+          template<typename L, typename = std::enable_if_t<enabled_<L>>>
+          constexpr decltype(auto) operator()(L&& l) const {
+            return Operator{}(unwrap(std::forward<L>(l)));
+          }
+        };
+        /*Allow operations with specific types*/
+        template<typename Operator, typename ...Args>
+        struct EnableOperatorIfVariadicIs {
+        private:
+          template<typename L, typename ...GivenArgs>
+          static constexpr bool enabled_ = isStrongValue<L>
+            && std::is_same_v<List<std::decay_t<Args>...>, List<std::decay_t<GivenArgs>...>>
+            && std::is_invocable_v<Operator, Args...>;
+        public:
+          template<typename L, typename ...GivenArgs, typename = std::enable_if_t<enabled_<L, GivenArgs...>>>
+          constexpr decltype(auto) operator()(L&& l, GivenArgs&&... rest) const {
+            return Operator{}(std::forward<L>(l), std::forward<GivenArgs>(rest)...);
+          }
+        };
+      }
+      /*
+        These are used to change the return values of the operators. 
+        E.g. + should probably rewrap the result as the leftmost strong value while ()
+        should probably return as is
+      */
+      namespace return_wrapping {
+        /*Returns a value as is*/
         template<typename Nested>
-        struct Impl {
+        struct NoWrappingImpl {
+        private:
           template<typename ...Args>
+          static constexpr bool enabled_ =
+            std::is_invocable_v<Nested, Args...>;
+        public:
+          template<typename ...Args, typename = std::enable_if_t<enabled_<Args...>>>
           constexpr decltype(auto) operator()(Args&&... args) const {
-            return GetEx<i, std::decay_t<Args>...>::wrap(Nested{}(std::forward<Args>(args)...));
+            return Nested{}(std::forward<Args>(args)...);
           }
         };
-      };
+        /*Returns a value as is*/
+        using NoWrapping = NoWrappingImpl<Placeholder>;
 
-      template<size_t i>
-      using IthWrapping = typename IthWrappingImpl<i>::template Impl<Placeholder>;
-
-      template<typename Wrapping>
-      struct StaticWrappingImpl {
-        template<typename Nested>
-        struct Impl {
-          template<typename ...Args>
-          constexpr decltype(auto) operator()(Args&&... args) const {
-            return Wrapping::wrap(Nested{}(std::forward<Args>(args)...));
-          }
-        };
-      };
-
-      template<typename Wrapping>
-      using StaticWrapping = typename StaticWrappingImpl<Wrapping>::template Impl<Placeholder>;
-
-      template<size_t i>
-      struct IthReferenceWrappingImpl {
-        template<typename Nested>
-        struct Impl {
-          template<typename ...Args>
-          constexpr decltype(auto) operator()(Args&&... args) {
-            Nested{}(std::forward<Args>(args)...);
-            return getIth<i>(std::forward<Args>(args)...);
-          }
-
-          template<size_t i, typename First, typename ...Rest>
-          constexpr decltype(auto) getIth(First&& first, Rest&&... rest) {
-            if constexpr(i == 0) {
-              return std::forward<First>(first);
-            } else {
-              return getIth<i - 1>(std::forward<Rest>(rest)...);
+        /*Wrap the output in a strongvalue the same as the ith type*/
+        template<size_t i>
+        struct WrapAsIthArgImpl {
+          template<typename Nested>
+          struct Impl {
+            template<typename ...Args>
+            constexpr decltype(auto) operator()(Args&&... args) const {
+              return GetEx<i, std::decay_t<Args>...>::wrap(Nested{}(std::forward<Args>(args)...));
             }
-          }
+          };
         };
-      };
+        /*Wrap the output in a strongvalue the same as the ith type*/
+        template<size_t i>
+        using WrapAsIthArg = typename WrapAsIthArgImpl<i>::template Impl<Placeholder>;
 
-      template<size_t i>
-      using IthReferenceWrapping = typename IthReferenceWrappingImpl<i>::template Impl<Placeholder>;
+        /*Wrap the result as a Wrapping*/
+        template<typename Wrapping>
+        struct StaticWrappingImpl {
+          template<typename Nested>
+          struct Impl {
+            template<typename ...Args>
+            constexpr decltype(auto) operator()(Args&&... args) const {
+              return Wrapping::wrap(Nested{}(std::forward<Args>(args)...));
+            }
+          };
+        };
+        /*Wrap the result as a Wrapping*/
+        template<typename Wrapping>
+        using StaticWrapping = typename StaticWrappingImpl<Wrapping>::template Impl<Placeholder>;
 
+        /*Returns the ith parameter as the result*/
+        template<size_t i>
+        struct ReturnIthArgImpl {
+          template<typename Nested>
+          struct Impl {
+            template<typename ...Args>
+            constexpr decltype(auto) operator()(Args&&... args) {
+              Nested{}(std::forward<Args>(args)...);
+              return getIth<i>(std::forward<Args>(args)...);
+            }
+
+            template<size_t i, typename First, typename ...Rest>
+            constexpr decltype(auto) getIth(First&& first, Rest&&... rest) {
+              if constexpr (i == 0) {
+                return std::forward<First>(first);
+              } else {
+                return getIth<i - 1>(std::forward<Rest>(rest)...);
+              }
+            }
+          };
+        };
+
+        /*Returns the ith parameter as the result*/
+        template<size_t i>
+        using ReturnIthArg = typename ReturnIthArgImpl<i>::template Impl<Placeholder>;
+      }
+      /*An operator with no arguments (e.g. ->)*/
       template<typename Operator, typename DefaultWrapping>
       struct NullaryOp {
         template<typename Functor>
         struct Ex;
 
         template<typename Wrapping = DefaultWrapping>
-        using Using = Ex<ChangeContainedEx<Wrapping, NullaryImpl<Operator>>>;
+        using Using = Ex<ChangeContainedEx<Wrapping, filters::EnableOperatorIfStrongValue<Operator>>>;
       };
-
+      /*An operator with 1 arg (e.g. [])*/
       template<typename Operator, typename DefaultWrapping>
       struct UnaryOp {
         template<typename Functor>
         struct Ex;
 
         template<typename Arg, typename Wrapping = DefaultWrapping>
-        using Using = Ex<ChangeContainedEx<Wrapping, RightOfImpl<Operator, Arg>>>;
+        using Using = Ex<ChangeContainedEx<Wrapping, filters::EnableOperatorIfLeftIs<Operator, Arg>>>;
       };
 
+      /*An operator with 1 arg, but either side (e.g. +)*/
       template<typename Operator, typename DefaultWrapping>
       struct BinaryOp {
         template<typename Functor>
         struct Ex;
 
         template<typename Right, typename Wrapping = DefaultWrapping>
-        using LeftOf = Ex<ChangeContainedEx<Wrapping, LeftOfImpl<Operator, Right>>>;
+        using LeftOf = Ex<ChangeContainedEx<Wrapping, filters::EnableOperatorIfRightIs<Operator, Right>>>;
 
         template<typename Left, typename Wrapping = DefaultWrapping>
-        using RightOf = Ex<ChangeContainedEx<Wrapping, RightOfImpl<Operator, Left>>>;
+        using RightOf = Ex<ChangeContainedEx<Wrapping, filters::EnableOperatorIfLeftIs<Operator, Left>>>;
 
         template<typename Wrapping = DefaultWrapping>
-        using Self = Ex<ChangeContainedEx<Wrapping, SelfImpl<Operator>>>;
+        using Self = Ex<ChangeContainedEx<Wrapping, filters::EnableOperatorIfBothSame<Operator>>>;
       };
 
+      /*An operator with a variadic number of args (e.g. ())*/
       template<typename Operator>
       struct VariadicOp {
         template<typename Functor>
         struct Ex;
 
         template<typename ...Args>
-        using Using = Ex <VariadicImpl<Operator, Args...>>;
+        using Using = Ex <filters::EnableOperatorIfVariadicIs<Operator, Args...>>;
       };
     }
   }
-
+  /*Allows copy construction of the type*/
   struct Copy;
+  /*Allows move construction of the type*/
   struct Move;
+  /*Allows construction of the type with Types...*/
   template<typename ...Types>
   struct Construct;
 
+  /*Removes the destructor. Destructor is the only operation allows by default*/
   struct NoDestructor;
 
+  /*Allows conversion using Functor*/
   template<typename Functor>
   struct ConvertToEx;
 
+  /*Allows conversion to To*/
   template<typename To>
-  using ConvertTo = ConvertToEx<impl::defaults::Converter<To>>;
+  using ConvertTo = ConvertToEx<impl::defaults::operators::Converter<To>>;
 
-  using NoWrap = impl::defaults::NullWrapping;
+  /*Don't wrap the result, return it as is*/
+  using NoWrapping = impl::defaults::return_wrapping::NoWrapping;
+  /*Wrap the result as T*/
   template<typename T>
-  using WrapAs = impl::defaults::StaticWrapping<T>;
+  using WrapAs = impl::defaults::return_wrapping::StaticWrapping<T>;
+  /*Wrap the result as the ith type*/
   template<size_t i>
-  using WrapAsIth = impl::defaults::IthWrapping<i>;
-  using WrapAsFirst = WrapAsIth<0>;
-  using WrapAsSecond = WrapAsIth<1>;
+  using WrapAsIthArg = impl::defaults::return_wrapping::WrapAsIthArg<i>;
+  /*Wrap the result as the first type*/
+  using WrapAsFirstArg = WrapAsIthArg<0>;
+  /*Wrap the result as the second type*/
+  using WrapAsSecondArg = WrapAsIthArg<1>;
+  /*Return the ith parameter*/
   template<size_t i>
-  using WrapAsIthReference = impl::defaults::IthReferenceWrapping<i>;
-  using WrapAsFirstReference = WrapAsIthReference<0>;
-  using WrapAsSecondReference = WrapAsIthReference<1>;
+  using ReturnAsIthArg = impl::defaults::return_wrapping::ReturnIthArg<i>;
+  /*Return the first parameter*/
+  using ReturnAsFirstArg = ReturnAsIthArg<0>;
+  /*Return the second parameter*/
+  using ReturnAsSecondArg = ReturnAsIthArg<1>;
 
-  using Less = impl::defaults::BinaryOp<impl::defaults::Less, NoWrap>;
-  using Greater = impl::defaults::BinaryOp<impl::defaults::Greater, NoWrap>;
-  using LessEqual = impl::defaults::BinaryOp<impl::defaults::LessEqual, NoWrap>;
-  using GreaterEqual = impl::defaults::BinaryOp<impl::defaults::GreaterEqual, NoWrap>;
-  using Equal = impl::defaults::BinaryOp<impl::defaults::Equal, NoWrap>;
-  using NotEqual = impl::defaults::BinaryOp<impl::defaults::NotEqual, NoWrap>;
+  /*<*/
+  using Less = impl::defaults::BinaryOp<impl::defaults::operators::Less, NoWrapping>;
+  /*>*/
+  using Greater = impl::defaults::BinaryOp<impl::defaults::operators::Greater, NoWrapping>;
+  /*<=*/
+  using LessEqual = impl::defaults::BinaryOp<impl::defaults::operators::LessEqual, NoWrapping>;
+  /*>=*/
+  using GreaterEqual = impl::defaults::BinaryOp<impl::defaults::operators::GreaterEqual, NoWrapping>;
+  /*==*/
+  using Equal = impl::defaults::BinaryOp<impl::defaults::operators::Equal, NoWrapping>;
+  /*!=*/
+  using NotEqual = impl::defaults::BinaryOp<impl::defaults::operators::NotEqual, NoWrapping>;
+  /*=*/
+  using Assign = impl::defaults::UnaryOp<impl::defaults::operators::Assign, WrapAsFirstArg>;
+  /*+*/
+  using Add = impl::defaults::BinaryOp<impl::defaults::operators::Add, WrapAsFirstArg>;
+  /*+=*/
+  using AddAssign = impl::defaults::BinaryOp<impl::defaults::operators::AddAssign, ReturnAsFirstArg>;
+  /*-*/
+  using Sub = impl::defaults::BinaryOp<impl::defaults::operators::Sub, WrapAsFirstArg>;
+  /*-=*/
+  using SubAssign = impl::defaults::BinaryOp<impl::defaults::operators::SubAssign, ReturnAsFirstArg>;
+  /**/
+  using Mult = impl::defaults::BinaryOp<impl::defaults::operators::Mult, WrapAsFirstArg>;
+  using MultAssign = impl::defaults::BinaryOp<impl::defaults::operators::MultAssign, ReturnAsFirstArg>;
+  using Div = impl::defaults::BinaryOp<impl::defaults::operators::Div, WrapAsFirstArg>;
+  using DivAssign = impl::defaults::BinaryOp<impl::defaults::operators::DivAssign, ReturnAsFirstArg>;
+  using Mod = impl::defaults::BinaryOp<impl::defaults::operators::Mod, WrapAsFirstArg>;
+  using ModAssign = impl::defaults::BinaryOp<impl::defaults::operators::ModAssign, ReturnAsFirstArg>;
+  using BinaryAnd = impl::defaults::BinaryOp<impl::defaults::operators::BinaryAnd, WrapAsFirstArg>;
+  using BinaryAndAssign = impl::defaults::BinaryOp<impl::defaults::operators::BinaryAndAssign, ReturnAsFirstArg>;
+  using BinaryOr = impl::defaults::BinaryOp<impl::defaults::operators::BinaryOr, WrapAsFirstArg>;
+  using BinaryOrAssign = impl::defaults::BinaryOp<impl::defaults::operators::BinaryOrAssign, ReturnAsFirstArg>;
+  using Xor = impl::defaults::BinaryOp<impl::defaults::operators::Xor, WrapAsFirstArg>;
+  using XorAssign = impl::defaults::BinaryOp<impl::defaults::operators::XorAssign, ReturnAsFirstArg>;
+  using LeftShift = impl::defaults::BinaryOp<impl::defaults::operators::LeftShift, WrapAsFirstArg>;
+  using LeftShiftAssign = impl::defaults::BinaryOp<impl::defaults::operators::LeftShiftAssign, ReturnAsFirstArg>;
+  using RightShift = impl::defaults::BinaryOp<impl::defaults::operators::RightShift, WrapAsFirstArg>;
+  using RightShiftAssign = impl::defaults::BinaryOp<impl::defaults::operators::RightShiftAssign, ReturnAsFirstArg>;
+  using BinaryNot = impl::defaults::NullaryOp<impl::defaults::operators::BinaryNot, WrapAsFirstArg>;
+  using UnaryPlus = impl::defaults::NullaryOp<impl::defaults::operators::UnaryPlus, WrapAsFirstArg>;
+  using UnaryMinus = impl::defaults::NullaryOp<impl::defaults::operators::UnaryMinus, WrapAsFirstArg>;
 
-  using Assign = impl::defaults::UnaryOp<impl::defaults::Assign, WrapAsFirst>;
+  using Subscript = impl::defaults::UnaryOp<impl::defaults::operators::Subscript, NoWrapping>;
 
-  using Add = impl::defaults::BinaryOp<impl::defaults::Add, WrapAsFirst>;
-  using AddAssign = impl::defaults::BinaryOp<impl::defaults::AddAssign, WrapAsFirstReference>;
-  using Sub = impl::defaults::BinaryOp<impl::defaults::Sub, WrapAsFirst>;
-  using SubAssign = impl::defaults::BinaryOp<impl::defaults::SubAssign, WrapAsFirstReference>;
-  using Mult = impl::defaults::BinaryOp<impl::defaults::Mult, WrapAsFirst>;
-  using MultAssign = impl::defaults::BinaryOp<impl::defaults::MultAssign, WrapAsFirstReference>;
-  using Div = impl::defaults::BinaryOp<impl::defaults::Div, WrapAsFirst>;
-  using DivAssign = impl::defaults::BinaryOp<impl::defaults::DivAssign, WrapAsFirstReference>;
-  using Mod = impl::defaults::BinaryOp<impl::defaults::Mod, WrapAsFirst>;
-  using ModAssign = impl::defaults::BinaryOp<impl::defaults::ModAssign, WrapAsFirstReference>;
-  using BinaryAnd = impl::defaults::BinaryOp<impl::defaults::BinaryAnd, WrapAsFirst>;
-  using BinaryAndAssign = impl::defaults::BinaryOp<impl::defaults::BinaryAndAssign, WrapAsFirstReference>;
-  using BinaryOr = impl::defaults::BinaryOp<impl::defaults::BinaryOr, WrapAsFirst>;
-  using BinaryOrAssign = impl::defaults::BinaryOp<impl::defaults::BinaryOrAssign, WrapAsFirstReference>;
-  using Xor = impl::defaults::BinaryOp<impl::defaults::Xor, WrapAsFirst>;
-  using XorAssign = impl::defaults::BinaryOp<impl::defaults::XorAssign, WrapAsFirstReference>;
-  using LeftShift = impl::defaults::BinaryOp<impl::defaults::LeftShift, WrapAsFirst>;
-  using LeftShiftAssign = impl::defaults::BinaryOp<impl::defaults::LeftShiftAssign, WrapAsFirstReference>;
-  using RightShift = impl::defaults::BinaryOp<impl::defaults::RightShift, WrapAsFirst>;
-  using RightShiftAssign = impl::defaults::BinaryOp<impl::defaults::RightShiftAssign, WrapAsFirstReference>;
-  using BinaryNot = impl::defaults::NullaryOp<impl::defaults::BinaryNot, WrapAsFirst>;
-  using UnaryPlus = impl::defaults::NullaryOp<impl::defaults::UnaryPlus, WrapAsFirst>;
-  using UnaryMinus = impl::defaults::NullaryOp<impl::defaults::UnaryMinus, WrapAsFirst>;
+  using PreIncrement = impl::defaults::NullaryOp<impl::defaults::operators::PreIncrement, ReturnAsFirstArg>;
+  using PreDecrement = impl::defaults::NullaryOp<impl::defaults::operators::PreDecrement, ReturnAsFirstArg>;
+  using PostIncrement = impl::defaults::NullaryOp<impl::defaults::operators::PostIncrement, WrapAsFirstArg>;
+  using PostDecrement = impl::defaults::NullaryOp<impl::defaults::operators::PostDecrement, WrapAsFirstArg>;
 
-  using Subscript = impl::defaults::UnaryOp<impl::defaults::Subscript, NoWrap>;
+  using LogicalNot = impl::defaults::NullaryOp<impl::defaults::operators::LogicalNot, NoWrapping>;
+  using LogicalAnd = impl::defaults::BinaryOp<impl::defaults::operators::LogicalAnd, NoWrapping>;
+  using LogicalOr = impl::defaults::BinaryOp<impl::defaults::operators::LogicalOr, NoWrapping>;
 
-  using PreIncrement = impl::defaults::NullaryOp<impl::defaults::PreIncrement, WrapAsFirstReference>;
-  using PreDecrement = impl::defaults::NullaryOp<impl::defaults::PreDecrement, WrapAsFirstReference>;
-  using PostIncrement = impl::defaults::NullaryOp<impl::defaults::PostIncrement, WrapAsFirst>;
-  using PostDecrement = impl::defaults::NullaryOp<impl::defaults::PostDecrement, WrapAsFirst>;
-
-  using LogicalNot = impl::defaults::NullaryOp<impl::defaults::LogicalNot, NoWrap>;
-  using LogicalAnd = impl::defaults::BinaryOp<impl::defaults::LogicalAnd, NoWrap>;
-  using LogicalOr = impl::defaults::BinaryOp<impl::defaults::LogicalOr, NoWrap>;
-
-  using Indirection = impl::defaults::NullaryOp<impl::defaults::Indirection, NoWrap>;
-  using AddressOf = impl::defaults::NullaryOp<impl::defaults::AddressOf, NoWrap>;
-  using MemberOfPointer = impl::defaults::NullaryOp<impl::defaults::MemberOfPointer, NoWrap>;
+  using Indirection = impl::defaults::NullaryOp<impl::defaults::operators::Indirection, NoWrapping>;
+  using AddressOf = impl::defaults::NullaryOp<impl::defaults::operators::AddressOf, NoWrapping>;
+  using MemberOfPointer = impl::defaults::NullaryOp<impl::defaults::operators::MemberOfPointer, NoWrapping>;
   //NYI using PointerToMemberOfPointer = impl::defaults::UnaryOp<impl::defaults::PointerToMemberOfPointer>;
 
-  using FunctionCall = impl::defaults::VariadicOp<impl::defaults::FunctionCall>;
-  using Comma = impl::defaults::BinaryOp<impl::defaults::Comma, WrapAsSecondReference>;
+  using FunctionCall = impl::defaults::VariadicOp<impl::defaults::operators::FunctionCall>;
+  using Comma = impl::defaults::BinaryOp<impl::defaults::operators::Comma, ReturnAsSecondArg>;
 
   using Orderable = impl::NestedExpandTo<Less::Self<>, Greater::Self<>, LessEqual::Self<>, GreaterEqual::Self<>, Equal::Self<>, NotEqual::Self<>>;
 
-  using Regular = impl::NestedExpandTo<Construct<>, Copy, Move, Orderable>;  
+  using Regular = impl::NestedExpandTo<Construct<>, Copy, Move, Orderable>;
+
+  using Field = impl::NestedExpandTo<Add::Self<>, Sub::Self<>, Mult::Self<>, Div::Self<>, AddAssign::Self<>, SubAssign::Self<>, MultAssign::Self<>, DivAssign::Self<>>;
 
   namespace impl {
 
+    /*SFINAE for allowing a constructor overload*/
     template<typename ArgsConstructable, typename Options>
     using AllowConstructor = std::enable_if_t <contains<ArgsConstructable, Options>>;
 
+    /*helper template struct for disallowing destructors*/
     template<bool>
     struct DisallowDestructorImpl;
 
+    /*if we should not disallow, nothing*/
     template<>
     struct DisallowDestructorImpl<false> {
 
     };
-
+    /*If we should disallow destruction, delete the destructor*/
     template<>
     struct DisallowDestructorImpl<true> {
       ~DisallowDestructorImpl() = delete;
     };
 
+    /*Helper typedef to choose the appropriate DisallowDestructorImpl specialization*/
     template<typename Options>
     using DisallowDestructor =
       DisallowDestructorImpl<contains<NoDestructor, Options>>;
 
+    /*Helper template struct for allowing copy*/
     template<bool>
     struct AllowCopyImpl;
 
+    /*If we should allow, nothing special*/
     template<>
     struct AllowCopyImpl<true> {
     };
-
+    /*If we shouldn't allow copying, delete copying*/
     template<>
     struct AllowCopyImpl<false> {
       AllowCopyImpl() = default;
@@ -668,17 +752,17 @@ namespace dlib::strongValue {
       AllowCopyImpl& operator=(AllowCopyImpl const&) = delete;
       AllowCopyImpl& operator=(AllowCopyImpl&&) = default;
     };
-
+    /*Helper typedef to choose the appropriate AllowCopyImpl specialization*/
     template<typename Options>
     using AllowCopy = AllowCopyImpl<contains<Copy, Options>>;
-
+    /*Helper template struct for allowing move*/
     template<bool>
     struct AllowMoveImpl;
-
+    /*if we should allow, nothing special*/
     template<>
     struct AllowMoveImpl<true> {
     };
-
+    /*If we shouldn't allow moving, delete moving*/
     template<>
     struct AllowMoveImpl<false> {
       AllowMoveImpl() = default;
@@ -688,16 +772,17 @@ namespace dlib::strongValue {
       AllowMoveImpl& operator=(AllowMoveImpl const&) = default;
       AllowMoveImpl& operator=(AllowMoveImpl&&) = delete;
     };
-
+    /*Helper typedef to choose the appropriate AllowMoveImpl specialization*/
     template<typename Options>
     using AllowMove = AllowMoveImpl<contains<Move, Options>>;
 
+    /*A helper to filter functors by type, Value is true_type if T is Option<SomethingElse>*/
     template<template<typename> typename Option>
     struct GetFunctorsHelper {
       template<typename T>
       using Value = ToIntegralConstant<isWrappedBy<Option, T>>;
     };
-
+    /*Get a list of all functors of a particular option in options*/
     template<template<typename> typename Option, typename Options>
     using GetFunctors = Transform<
       First,

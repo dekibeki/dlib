@@ -7,7 +7,7 @@
 #include <dlib/math.hpp>
 
 namespace dlib {
-  namespace array_view_impl {
+  namespace arrays_impl {
     template<typename T_, typename Holding_pointer_>
     class Basic_array_view {
     public:
@@ -130,7 +130,7 @@ namespace dlib {
 
   template<typename T>
   class Dynamic_array :
-    public array_view_impl::Basic_array_view<T, std::unique_ptr<T[]>> {
+    public arrays_impl::Basic_array_view<T, std::unique_ptr<T[]>> {
   public:
     using value_type = typename Basic_array_view::value_type;
     using size_type = typename Basic_array_view::size_type;
@@ -148,7 +148,7 @@ namespace dlib {
 
   template<typename T>
   class Array_view :
-    public array_view_impl::Basic_array_view<T, T*> {
+    public arrays_impl::Basic_array_view<T, T*> {
   public:
     using Basic_array_view::Basic_array_view;
     using value_type = typename Basic_array_view::value_type;
