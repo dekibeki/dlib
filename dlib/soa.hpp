@@ -377,4 +377,24 @@ namespace std {
   ::std::tuple_element_t<i, ::dlib::soa_impl::Soa_proxy_reference<Members...>> && get(::dlib::soa_impl::Soa_proxy_reference<Members...>const && t) noexcept {
     return std::move(t.template get<i>());
   }
+
+  template<typename T, typename ...Members>
+  T& get(::dlib::soa_impl::Soa_proxy_reference<Members...>& t) noexcept {
+    return t.template get<T>();
+  }
+
+  template<typename T, typename ...Members>
+  T const& get(::dlib::soa_impl::Soa_proxy_reference<Members...> const& t) noexcept {
+    return t.template get<T>();
+  }
+
+  template<typename T, typename ...Members>
+  T&& get(::dlib::soa_impl::Soa_proxy_reference<Members...>&& t) noexcept {
+    return std::move(t.template get<T>());
+  }
+
+  template<typename T, typename ...Members>
+  T const&& get(::dlib::soa_impl::Soa_proxy_reference<Members...> const&& t) noexcept {
+    return std::move(t.template get<T>());
+  }
 }
