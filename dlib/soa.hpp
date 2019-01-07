@@ -228,6 +228,8 @@ namespace dlib {
     using Vector = soa_impl::Vector_impl<T>;
     using iterator = soa_impl::Soa_iterator<Members...>;
     using const_iterator = soa_impl::Soa_const_iterator<Members...>;
+    using reference = soa_impl::Soa_proxy_reference<Members...>;
+    using const_reference = soa_impl::Soa_proxy_reference<const Members...>;
 
     template<typename Member>
     Member& get(size_type i) noexcept {
@@ -315,19 +317,43 @@ namespace dlib {
     void push(Members... members) noexcept {
       (..., get_underlying<Members>().emplace(std::move(members)));
     }
-    void erase(size_t i) noexcept {
+    void push(reference const& ref) noexcept {
+      (..., get_underlying<Members>().emplace(std::get<Members>(ref)));
+    }
+    void push(reference&& ref) noexcept {
+      (..., get_underlying<Members>().emplace(std::get<Members>(ref)));
+    }
+    void push(const_reference const& ref) noexcept {
+      (..., get_underlying<Members>().emplace(std::get<Members>(ref)));
+    }
+    iterator erase(size_type i) noexcept {
       (..., get_underlying<Members>().erase(get_underlying<Members>().begin() + i));
+      return begin() + i;
     }
     template<typename ...Targets>
-    void erase(soa_impl::Soa_iterator<Targets...> const& iter) noexcept {
-      using Type1 = First<Targets...>;
-      erase(iter.get<Type1>() - get_underlying<Type1>())
+    iterator erase(soa_impl::Soa_iterator<Targets...> const& iter) noexcept {
+      return erase(get_index_(iter))
     }
     template<typename ...Targets>
-    void erase(soa_impl::Soa_const_iterator<Targets...> const& iter) noexcept {
-      using Type1 = First<Targets...>;
-      erase(iter.get<Type1>() - get_underlying<Type1>())
+    iterator erase(soa_impl::Soa_const_iterator<Targets...> const& iter) noexcept {
+      return erase(get_index_(iter))
     }
+
+    void move_element(size_t index, Soa& to) noexcept {
+      to.push(std::move(get<Members>(index))...);
+      erase(index);
+    }
+
+    template<typename ...Targets>
+    void move_element(soa_impl::Soa_iterator<Targets...> const& iter, Soa& to) noexcept {
+      move_element(get_index_(iter), to);
+    }
+
+    template<typename ...Targets>
+    void move_element(soa_impl::Soa_const_iterator<Targets...> const& iter, Soa& to) noexcept {
+      move_element(get_index_(iter), to);
+    }
+
     auto size() const noexcept {
       return std::get<0>(holding_).size();
     }
@@ -335,9 +361,24 @@ namespace dlib {
     void reserve(size_t i) noexcept {
       (..., get_underlying<Members>().reserve(i));
     }
+
+    reference operator[](size_type i) noexcept {
+      return reference{ get<Members>(i)... };
+    }
+    const_reference operator[](size_type i) const noexcept {
+      return const_reference{ get<Members>(i)... };
+    }
   private:
+    template<typename ...Targets>
+    size_type get_index_(soa_impl::Soa_iterator<Targets...> const& iter) const noexcept {
+      using First_type = First<Targets...>;
+      return iter.get<First_type>() - get_underlying<First_type>();
+    }
     std::tuple<Vector<Members>...> holding_;
   };
+
+  template<typename ...Members>
+  using Aos = soa_impl::Vector_impl<std::tuple<Members...>>;
 }
 
 namespace std {

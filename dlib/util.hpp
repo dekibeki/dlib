@@ -85,4 +85,27 @@ namespace dlib {
   constexpr std::string_view as_string_view(const char(&name)[n]) noexcept {
     return std::string_view(name, n - 1);
   }
+
+  template<typename Functor>
+  void for_each_zip(Functor&& functor) noexcept {
+
+  }
+
+  namespace util_impl {
+    template<typename Functor, typename First_end, typename First_iter, typename ...Rest_iter>
+    void for_each_zip_impl(Functor&& functor, First_iter&& first_iter, First_end&& first_end, Rest_iter&&... rest_iters) {
+      for (; first_iter != first_end; ++first_iter, (..., ++rest_iters)) {
+        functor(*first_iter, *rest_iters...);
+      }
+    }
+  }
+
+  template<typename Functor, typename First_container, typename ...Rest>
+  void for_each_zip(Functor&& functor, First_container&& first, Rest&&... rest) {
+    if (constexpr(sizeof...Containers) > 1) {
+      assert((... == containers.size()));
+    }
+    
+    util_impl::for_each_zip_impl(std::forward<Functor>(functor), first.begin(), first.end(), rest.begin()...);
+  }
 }
