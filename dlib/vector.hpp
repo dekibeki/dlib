@@ -22,7 +22,7 @@ namespace dlib::geometry {
     Vector(Vector&&) = default;
 
     constexpr Vector(std::initializer_list<Distance> in) {
-      const size_t min = common::vmin(in.size(), data_.size());
+      const size_t min = vmin(in.size(), data_.size());
 
       std::copy_n(in.begin(), min, data_.begin());
     }
@@ -68,6 +68,9 @@ namespace dlib::geometry {
 
     constexpr bool operator==(Vector const& other) const noexcept {
       return data_ == other.data_;
+    }
+    constexpr bool operator!=(Vector const& other) const noexcept {
+      return !this->operator==(other);
     }
 
     constexpr Distance& operator[](int i) noexcept {

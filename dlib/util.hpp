@@ -102,8 +102,8 @@ namespace dlib {
 
   template<typename Functor, typename First_container, typename ...Rest>
   void for_each(Functor&& functor, First_container&& first, Rest&&... rest) {
-    if (constexpr(sizeof...Containers) > 1) {
-      assert((... == containers.size()));
+    if constexpr(sizeof...(Rest) > 1) {
+      assert((... == rest.size()));
     }
     
     util_impl::for_each_impl(std::forward<Functor>(functor), first.begin(), first.end(), rest.begin()...);

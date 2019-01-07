@@ -47,6 +47,7 @@ set(dlibTests
   ${dlibTest}/test_arrays.cpp
   ${dlibTest}/test_unordered_vector.cpp
   ${dlibTest}/test_soa.cpp
+  ${dlibTest}/test_strong_type.cpp
   )
 
 add_library(dlib ${dlibSources})
