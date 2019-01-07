@@ -30,3 +30,15 @@ BOOST_AUTO_TEST_CASE(soa_sort) {
     return std::get<0>(v1) < std::get<0>(v2);
     });
 }
+
+BOOST_AUTO_TEST_CASE(soa_move_and_copy) {
+  Testing_soa soa{ generate_testing_soa() };
+
+  Testing_soa copy{ soa };
+  Testing_soa move{ std::move(soa) };
+
+  Testing_soa copy_assign;
+  copy_assign = move;
+  Testing_soa move_assign;
+  move_assign = std::move(move);
+}

@@ -23,6 +23,26 @@ namespace dlib {
         members_(members...) {
 
       }
+      Soa_proxy_reference(Soa_proxy_reference const&) noexcept = default;
+      Soa_proxy_reference(Soa_proxy_reference&&) noexcept = default;
+
+      Soa_proxy_reference& operator=(Soa_proxy_reference const& other) {
+        (..., (this->get<Members>() = other->get<Members>()));
+        return *this;
+      }
+      Soa_proxy_reference& operator=(Soa_proxy_reference&& other) {
+        (..., (this->get<Members>() = std::move(other.get<Members>())));
+        return *this;
+      }
+      Soa_proxy_reference& operator=(std::tuple<std::reference_wrapper<Members>...> const& other) {
+        (..., (this->get<Members>() = std::get<std::reference_wrapper<Members>>(other).get()));
+        return *this;
+      }
+      Soa_proxy_reference& operator=(std::tuple<std::reference_wrapper<Members>...>&& other) {
+        (..., (this->get<Members>() = std::move(std::get<std::reference_wrapper<Members>>(other).get())));
+        return *this;
+      }
+
       template<size_t i>
       auto& get() const noexcept {
         return std::get<i>(members_).get();
@@ -41,22 +61,6 @@ namespace dlib {
       }
       operator std::tuple<std::reference_wrapper<Members>...> const&() const noexcept {
         return members_;
-      }
-      Soa_proxy_reference& operator=(Soa_proxy_reference const& other) {
-        (..., (this->get<Members>() = other->get<Members>()));
-        return *this;
-      }
-      Soa_proxy_reference& operator=(Soa_proxy_reference&& other) {
-        (..., (this->get<Members>() = std::move(other.get<Members>())));
-        return *this;
-      }
-      Soa_proxy_reference& operator=(std::tuple<std::reference_wrapper<Members>...> const& other) {
-        (..., (this->get<Members>() = std::get<std::reference_wrapper<Members>>(other).get()));
-        return *this;
-      }
-      Soa_proxy_reference& operator=(std::tuple<std::reference_wrapper<Members>...>&& other) {
-        (..., (this->get<Members>() = std::move(std::get<std::reference_wrapper<Members>>(other).get())));
-        return *this;
       }
     private:
       std::tuple<std::reference_wrapper<Members>...> members_;
@@ -231,6 +235,8 @@ namespace dlib {
     using reference = soa_impl::Soa_proxy_reference<Members...>;
     using const_reference = soa_impl::Soa_proxy_reference<const Members...>;
 
+
+
     template<typename Member>
     Member& get(size_type i) noexcept {
       return get<Member>()[i];
@@ -374,6 +380,7 @@ namespace dlib {
       using First_type = First<Targets...>;
       return iter.get<First_type>() - get_underlying<First_type>();
     }
+
     std::tuple<Vector<Members>...> holding_;
   };
 
