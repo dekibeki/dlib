@@ -31,6 +31,20 @@ BOOST_AUTO_TEST_CASE(soa_sort) {
     });
 }
 
+BOOST_AUTO_TEST_CASE(soa_erase) {
+  Testing_soa soa{ generate_testing_soa() };
+  soa.erase(soa.begin(), soa.end());
+  BOOST_TEST((soa.empty()));
+  soa = generate_testing_soa();
+  soa.erase(soa.begin() + 1, soa.end());
+  BOOST_TEST((soa.size() == 1));
+  BOOST_TEST((std::get<std::string>(soa) == "row1"));
+  soa = generate_testing_soa();
+  soa.erase(soa.begin(), soa.end() - 1);
+  BOOST_TEST((soa.size() == 1));
+  BOOST_TEST((std::get<std::string>(soa) == "row3"));
+}
+
 BOOST_AUTO_TEST_CASE(soa_move_and_copy) {
   Testing_soa soa{ generate_testing_soa() };
 

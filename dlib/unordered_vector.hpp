@@ -151,13 +151,11 @@ namespace dlib {
       return holder_.emplace_back(std::forward<Args>(args)...);
     }
 
-    void erase(const_iterator pos) {
+    iterator erase(const_iterator pos) {
       const size_type our_size = holder_.size();
-      if (our_size < 1) {
-        //if size is smaller than the amount we're erasing, we can't be erasing a valid iterator
-        assert(false);
-      } else if (our_size == 1) {
+      if (our_size == 1) {
         holder_.pop_back();
+        return end();
       } else {
         const difference_type index = pos - holder_.cbegin();
         if (index != our_size - 1) {
@@ -165,24 +163,30 @@ namespace dlib {
           holder_[index] = std::move(holder_.back());
         }
         holder_.pop_back();
+        return begin() + index;
       }
     }
-    void erase(const_iterator first, const_iterator last) {
+    iterator erase(const_iterator first, const_iterator last) {
       const difference_type range_length = last - first;
       const size_type our_size = holder_.size();
-      if (our_size < range_length) {
-        assert(false);
-      } else if (our_size == our_size) {
+      if (range_length == our_size) {
         holder_.clear();
+        return end();
       } else {
         const difference_type first_index = first - holder_.cbegin();
         const difference_type last_index = last - holder_.cbegin();
+        const difference_type copy_start = vMax(last_index, static_cast<difference_type>(our_size - range_length));
         if (first_index != our_size - range_length) {
-          for (difference_type i = 0; i < range_length; ++i) {
-            holder_[first_index + i] = std::move(holder_[our_size - range_length + i]);
+          /*
+            because of how copy_start is set, copy_start + i < our_size includes a check 
+            for last_index + i < our_size          
+          */
+          for (difference_type i = 0; copy_start + i < our_size; ++i) {
+            holder_[first_index + i] = std::move(holder_[copy_start + i]);
           }
-          holder_.erase(holder_.end() - range_length, holder_.end());
         }
+        holder_.erase(holder_.end() - range_length, holder_.end());
+        return begin() + first_index;
       }
     }
 
