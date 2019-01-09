@@ -467,22 +467,7 @@ namespace std {
   }
 
   template<typename T, typename ...Members>
-  T& get(::dlib::soa_impl::Soa_proxy_reference<Members...>& t) noexcept {
+  T& get(::dlib::soa_impl::Soa_proxy_reference<Members...> const& t) noexcept {
     return t.template get<T>();
-  }
-
-  template<typename T, typename ...Members>
-  T const& get(::dlib::soa_impl::Soa_proxy_reference<Members...> const& t) noexcept {
-    return t.template get<T>();
-  }
-
-  template<typename T, typename ...Members>
-  T&& get(::dlib::soa_impl::Soa_proxy_reference<Members...>&& t) noexcept {
-    return std::move(t.template get<T>());
-  }
-
-  template<typename T, typename ...Members>
-  T const&& get(::dlib::soa_impl::Soa_proxy_reference<Members...> const&& t) noexcept {
-    return std::move(t.template get<T>());
   }
 }
