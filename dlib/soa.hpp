@@ -49,7 +49,7 @@ namespace dlib {
       }
 
       template<typename T>
-      T& get() noexcept {
+      T& get() const noexcept {
         return std::get<std::reference_wrapper<T>>(members_).get();
       }
 
