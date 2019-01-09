@@ -502,9 +502,15 @@ namespace dlib::strongValue {
         /*Wrap the output in a strongvalue the same as the ith type*/
         template<size_t i>
         struct WrapAsIthArgImpl {
+
           template<typename Nested>
           struct Impl {
+          private:
             template<typename ...Args>
+            static constexpr bool enabled_ =
+              std::is_invocable_v<Nested, Args...>;
+          public:
+            template<typename ...Args, typename = std::enable_if_t<enabled_<Args...>>>
             constexpr decltype(auto) operator()(Args&&... args) const {
               return GetEx<i, std::decay_t<Args>...>::wrap(Nested{}(std::forward<Args>(args)...));
             }
@@ -519,7 +525,12 @@ namespace dlib::strongValue {
         struct StaticWrappingImpl {
           template<typename Nested>
           struct Impl {
+          private:
             template<typename ...Args>
+            static constexpr bool enabled_ =
+              std::is_invocable_v<Nested, Args...>;
+          public:
+            template<typename ...Args, typename = std::enable_if_t<enabled_<Args...>>>
             constexpr decltype(auto) operator()(Args&&... args) const {
               return Wrapping::wrap(Nested{}(std::forward<Args>(args)...));
             }
@@ -534,7 +545,12 @@ namespace dlib::strongValue {
         struct ReturnIthArgImpl {
           template<typename Nested>
           struct Impl {
+          private:
             template<typename ...Args>
+            static constexpr bool enabled_ =
+              std::is_invocable_v<Nested, Args...>;
+          public:
+            template<typename ...Args, typename = std::enable_if_t<enabled_<Args...>>>
             constexpr decltype(auto) operator()(Args&&... args) {
               Nested{}(std::forward<Args>(args)...);
               return getIth<i>(std::forward<Args>(args)...);
