@@ -5,13 +5,32 @@
 #include <dlib/vector.hpp>
 
 using namespace dlib;
+namespace {
+  static_assert(strong_type::is_strong_type<strong_type::Strong_type<int>> == true);
+
+  struct Struct_wrapper_test :
+    public strong_type::Strong_type<int> {
+
+  };
+
+  static_assert(strong_type::is_strong_type<Struct_wrapper_test> == true);
+
+  struct Bad_struct_test {
+
+  };
+
+  static_assert(strong_type::is_strong_type<Bad_struct_test> == false);
+}
 
 BOOST_AUTO_TEST_CASE(strong_value_default_construct) {
-  strongValue::StrongValue<int, strongValue::Construct<>> test1;
+  strong_type::Strong_type<int, strong_type::Construct<>> test1;
 }
 
 BOOST_AUTO_TEST_CASE(strong_value_add_same) {
-  using Sv = strongValue::StrongValue<int, strongValue::Construct<int>,  strongValue::Add::Self<>>;
+  struct Sv :
+    public strong_type::Strong_type<int, strong_type::Construct<int>, strong_type::Add::Self, strong_type::Copy> {
+    using Strong_type::Strong_type;
+  };
 
   Sv sv1{ 0 };
   Sv sv2{ 1 };
@@ -19,8 +38,14 @@ BOOST_AUTO_TEST_CASE(strong_value_add_same) {
 }
 
 BOOST_AUTO_TEST_CASE(strong_value_add_sided) {
-  using Sv_left = strongValue::StrongValue<int, strongValue::Construct<int>>;
-  using Sv_right = strongValue::StrongValue<int, strongValue::Construct<int>, strongValue::Add::RightOf<Sv_left>>;
+  struct Sv_left :
+    public strong_type::Strong_type<int, strong_type::Construct<int>> {
+    using Strong_type::Strong_type;
+  };
+  struct Sv_right :
+    public strong_type::Strong_type<int, strong_type::Construct<int>, strong_type::Add::RightOf<Sv_left>> {
+    using Strong_type::Strong_type;
+  };
 
   Sv_left left{ 0 };
   Sv_right right{ 1 };

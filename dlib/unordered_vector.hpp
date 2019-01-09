@@ -168,7 +168,7 @@ namespace dlib {
     }
     iterator erase(const_iterator first, const_iterator last) {
       const difference_type range_length = last - first;
-      const size_type our_size = holder_.size();
+      const difference_type our_size = holder_.size();
       if (range_length == our_size) {
         holder_.clear();
         return end();
