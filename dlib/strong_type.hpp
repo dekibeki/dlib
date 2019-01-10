@@ -82,8 +82,11 @@ namespace dlib::strong_type {
   /*
   Gets the unwrapped (the type if its a strong value, otherwise T) type of T
 */
+
   template<typename T>
-  using Unwrap = decltype(unwrap(std::declval<T>()));
+  std::add_rvalue_reference_t<T> our_declval();
+  template<typename T>
+  using Unwrap = decltype(unwrap(our_declval<T>()));
 
   namespace defaults {
     /*Default conversion operator functor*/
@@ -408,20 +411,19 @@ namespace dlib::strong_type {
   namespace filters {
     template<typename Operator, typename T>
     decltype(auto) operator_forwarder(T&& t) {
-      return Operator{}(unwrap(std::forward<T>(t)));
+      return Operator{}(std::forward<T>(t));
     }
     template<typename Operator, typename L, typename R>
     decltype(auto) operator_forwarder(L&& l, R&& r) {
-      return Operator{}(unwrap(std::forward<L>(l)), unwrap(std::forward<R>(r)));
+      return Operator{}(std::forward<L>(l), std::forward<R>(r));
     }
     /*Allows operations with a specific type on the right of the operator*/
     template<typename Operator, typename Right>
     struct Right_is {
     private:
       template<typename L, typename R>
-      static constexpr bool enabled_ = is_strong_type<L>
-        && std::is_same_v<std::decay_t<R>, Right>
-        && std::is_invocable_v<Operator, Unwrap<L>, Unwrap<R>>;
+      static constexpr bool enabled_ = std::is_same_v<std::decay_t<R>, Right>
+        && std::is_invocable_v<Operator, L, R>;
     public:
       template<typename L, typename R, typename = std::enable_if_t<enabled_<L, R>>>
       constexpr decltype(auto) operator()(L&& l, R&& r) const {
@@ -433,9 +435,8 @@ namespace dlib::strong_type {
     struct Left_is {
     private:
       template<typename L, typename R>
-      static constexpr bool enabled_ = is_strong_type<R>
-        && std::is_same_v<std::decay_t<L>, Left>
-        && std::is_invocable_v<Operator, Unwrap<L>, Unwrap<R>>;
+      static constexpr bool enabled_ = std::is_same_v<std::decay_t<L>, Left>
+        && std::is_invocable_v<Operator, L, R>;
     public:
       template<typename L, typename R, typename = std::enable_if_t<enabled_<L, R>>>
       constexpr decltype(auto) operator()(L&& l, R&& r) const {
@@ -447,9 +448,8 @@ namespace dlib::strong_type {
     struct Both_same {
     private:
       template<typename L, typename R>
-      static constexpr bool enabled_ = is_strong_type<L>
-        && std::is_same_v<std::decay_t<L>, std::decay_t<R>>
-        && std::is_invocable_v<Operator, Unwrap<L>, Unwrap<R>>;
+      static constexpr bool enabled_ = std::is_same_v<std::decay_t<L>, std::decay_t<R>>
+        && std::is_invocable_v<Operator, L, R>;
     public:
       template<typename L, typename R, typename = std::enable_if_t<enabled_<L, R>>>
       constexpr decltype(auto) operator()(L&& l, R&& r) const {
@@ -461,8 +461,8 @@ namespace dlib::strong_type {
     struct Variadic_is {
     private:
       template<typename L, typename ...GivenArgs>
-      static constexpr bool enabled_ = is_strong_type<L>
-        && std::is_same_v<List<std::decay_t<Args>...>, List<std::decay_t<GivenArgs>...>>
+      static constexpr bool enabled_ = 
+        std::is_same_v<List<std::decay_t<Args>...>, List<std::decay_t<GivenArgs>...>>
         && std::is_invocable_v<Operator, Args...>;
     public:
       template<typename L, typename ...GivenArgs, typename = std::enable_if_t<enabled_<L, GivenArgs...>>>
@@ -476,29 +476,14 @@ namespace dlib::strong_type {
       E.g. + should probably rewrap the result as the leftmost strong value while ()
       should probably return as is
     */
-  namespace return_wrapping {
-    /*Returns a value as is*/
-    template<typename Nested>
-    struct No_wrapping {
-    private:
-      template<typename ...Args>
-      using Sfinae = std::enable_if_t<
-        std::is_invocable_v<Nested, Args...>>;
-    public:
-      template<typename ...Args, typename = Sfinae<Args...>>
-      constexpr decltype(auto) operator()(Args&&... args) const {
-        return Nested{}(std::forward<Args>(args)...);
-      }
-    };
-
+  namespace wrapping {
     /*Wrap the output in a strongvalue the same as the ith type*/
     template<typename Nested, size_t i>
     struct Wrap_as_ith_arg {
       template<typename ...Args>
-      using Sfinae = std::enable_if_t<
-        std::is_invocable_v<Nested, Args...>>;
+      static constexpr bool enabled = std::is_invocable_v<Nested, Args...>;
 
-      template<typename ...Args, typename = Sfinae<Args...>>
+      template<typename ...Args, typename = std::enable_if_t<enabled<Args...>>>
       constexpr decltype(auto) operator()(Args&&... args) const {
         return GetEx<i, std::decay_t<Args>...>::wrap(
           Nested{}(std::forward<Args>(args)...));
@@ -509,10 +494,9 @@ namespace dlib::strong_type {
     template<typename Nested, typename Wrapping>
     struct Static_wrapping {
       template<typename ...Args>
-      using Sfinae = std::enable_if_t<
-        std::is_invocable_v<Nested, Args...>>;
+      static constexpr bool enabled = std::is_invocable_v<Nested, Args...>;
 
-      template<typename ...Args, typename = Sfinae<Args...>>
+      template<typename ...Args, typename = std::enable_if_t<enabled<Args...>>>
       constexpr decltype(auto) operator()(Args&&... args) const {
         return Wrapping::wrap(Nested{}(std::forward<Args>(args)...));
       }
@@ -522,10 +506,9 @@ namespace dlib::strong_type {
     template<typename Nested, size_t i>
     struct Return_ith_arg {
       template<typename ...Args>
-      using Sfinae = std::enable_if_t<
-        std::is_invocable_v<Nested, Args...>>;
+      static constexpr bool enabled = std::is_invocable_v<Nested, Args...>;
 
-      template<typename ...Args, typename = Sfinae<Args...>>
+      template<typename ...Args, typename = std::enable_if_t<enabled<Args...>>>
       constexpr decltype(auto) operator()(Args&&... args) {
         Nested{}(std::forward<Args>(args)...);
         return get_ith_<i>(std::forward<Args>(args)...);
@@ -538,6 +521,17 @@ namespace dlib::strong_type {
         } else {
           return getIth<i - 1>(std::forward<Rest>(rest)...);
         }
+      }
+    };
+  
+    template<typename Nested>
+    struct Unwrap_all {
+      template<typename ...Args>
+      static constexpr bool enabled = std::is_invocable_v<Nested, Unwrap<Args>...>;
+
+      template<typename ...Args, typename = std::enable_if_t<enabled<Args...>>>
+      constexpr decltype(auto) operator()(Args&&... args) {
+        return Nested{}(unwrap(std::forward<Args>(args))...);
       }
     };
   }
@@ -637,7 +631,7 @@ namespace dlib::strong_type {
       template<typename Functor>
       using Ex = Holder<Functor>;
 
-      using Allow = Ex<Default>;
+      using Allow = Ex<wrapping::Unwrap_all<Default>>;
     };
     /*An operator with 1 arg (e.g. [], =)*/
     template<template<typename Functor> typename Holder, typename Default>
@@ -646,7 +640,7 @@ namespace dlib::strong_type {
       using Ex = Holder<Functor>;
 
       template<typename Arg>
-      using Allow = Ex<filters::Right_is<Default, Arg>>;
+      using Allow = Ex<filters::Right_is<wrapping::Unwrap_all<Default>, Arg>>;
     };
 
     /*An operator with 1 arg, but either side (e.g. +)*/
@@ -656,12 +650,12 @@ namespace dlib::strong_type {
       using Ex = Holder<Functor>;
 
       template<typename Right>
-      using LeftOf = Ex<filters::Right_is<Default, Right>>;
+      using LeftOf = Ex<filters::Right_is<wrapping::Unwrap_all<Default>, Right>>;
 
       template<typename Left>
-      using RightOf = Ex<filters::Left_is<Default, Left>>;
+      using RightOf = Ex<filters::Left_is<wrapping::Unwrap_all<Default>, Left>>;
 
-      using Self = Ex<filters::Both_same<Default>>;
+      using Self = Ex<filters::Both_same<wrapping::Unwrap_all<Default>>>;
     };
 
     /*An operator with a variadic number of args (e.g. ())*/

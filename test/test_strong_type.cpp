@@ -2,7 +2,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include <dlib/strong_type.hpp>
-#include <dlib/vector.hpp>
 
 using namespace dlib;
 namespace {
@@ -22,11 +21,11 @@ namespace {
   static_assert(strong_type::is_strong_type<Bad_struct_test> == false);
 }
 
-BOOST_AUTO_TEST_CASE(strong_value_default_construct) {
+BOOST_AUTO_TEST_CASE(strong_type_default_construct) {
   strong_type::Strong_type<int, strong_type::Construct<>> test1;
 }
 
-BOOST_AUTO_TEST_CASE(strong_value_add_same) {
+BOOST_AUTO_TEST_CASE(strong_type_add_same) {
   struct Sv :
     public strong_type::Strong_type<int, strong_type::Construct<int>, strong_type::Add::Self, strong_type::Copy> {
     using Strong_type::Strong_type;
@@ -37,7 +36,7 @@ BOOST_AUTO_TEST_CASE(strong_value_add_same) {
   Sv sv3{ sv1 + sv2 };
 }
 
-BOOST_AUTO_TEST_CASE(strong_value_add_sided) {
+BOOST_AUTO_TEST_CASE(strong_type_add_sided) {
   struct Sv_left :
     public strong_type::Strong_type<int, strong_type::Construct<int>> {
     using Strong_type::Strong_type;
@@ -50,4 +49,16 @@ BOOST_AUTO_TEST_CASE(strong_value_add_sided) {
   Sv_left left{ 0 };
   Sv_right right{ 1 };
   Sv_left result{ left + right };
+}
+
+BOOST_AUTO_TEST_CASE(strong_type_increment) {
+  struct Sv :
+    public strong_type::Strong_type<int, strong_type::Construct<int>, strong_type::Pre_increment::Allow> {
+    using Strong_type::Strong_type;
+  };
+
+  
+
+  Sv sv{ 1 };
+  ++sv;
 }
