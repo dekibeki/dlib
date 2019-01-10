@@ -861,11 +861,6 @@ namespace dlib::strong_type {
 
   using Field = impl::NestedExpandTo<Add::Self, Sub::Self, Mult::Self, Div::Self, Add_assign::Self, Sub_assign::Self, Mult_assign::Self, Div_assign::Self>;
 
-  template<typename T, typename ...Args>
-  static T wrap(Args&&... args) {
-    return T{ T::escapeHatch_, std::forward<Args>(args)... };
-  }
-
   namespace impl {
 
     /*SFINAE for allowing a constructor overload*/
