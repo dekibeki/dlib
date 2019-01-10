@@ -40,34 +40,41 @@ namespace dlib::strong_type {
     constexpr bool is_valid_impl(nullptr_t) {
       return true;
     }
+
+    struct Wrap_escape_hatch {};
+
+    constexpr Wrap_escape_hatch wrap_escape_hatch{};
   }
+ 
   template<typename T>
   constexpr auto is_strong_type = impl::is_valid_impl<std::decay_t<T>>(nullptr);
 
-  /*Declaration of a class to pull type and options out of a strong value*/
-  template<typename T, bool is_strong_type = is_strong_type<T>>
-  struct Strong_type_info;
+  namespace impl {
+    /*Declaration of a class to pull type and options out of a strong value*/
+    template<typename T, bool is_strong_type = is_strong_type<T>>
+    struct Strong_type_info;
 
-  /*Partial spec to pull type and options out of a strong value*/
-  template<typename T>
-  struct Strong_type_info<T, true> {
-    using Type = typename std::decay_t<T>::Type;
-    using Options = typename std::decay_t<T>::Options;
-  };
-  /*If it isn't a strong_type, just return what it is*/
-  template<typename T>
-  struct Strong_type_info<T, false> {
-    using Type = std::decay_t<T>;
-    using Options = List<>;
-  };
+    /*Partial spec to pull type and options out of a strong value*/
+    template<typename T>
+    struct Strong_type_info<T, true> {
+      using Type = typename std::decay_t<T>::Type;
+      using Options = typename std::decay_t<T>::Options;
+    };
+    /*If it isn't a strong_type, just return what it is*/
+    template<typename T>
+    struct Strong_type_info<T, false> {
+      using Type = std::decay_t<T>;
+      using Options = List<>;
+    };
+  }
 
   /* Helper typedef to get type of a strong value*/
   template<typename T>
-  using Strong_type_type = typename Strong_type_info<T>::Type;
+  using Strong_type_type = typename impl::Strong_type_info<T>::Type;
 
   /* Helper typedef to get the options of a strong value*/
   template<typename T>
-  using Strong_type_options = typename Strong_type_info<T>::Options;
+  using Strong_type_options = typename impl::Strong_type_info<T>::Options;
 
   /*Unwraps a strong value if it is one, otherwise returns t*/
   template<typename T>
@@ -81,12 +88,18 @@ namespace dlib::strong_type {
 
   /*
   Gets the unwrapped (the type if its a strong value, otherwise T) type of T
-*/
+  */
+  template<typename T>
+  using Unwrap = decltype(unwrap(std::declval<T>()));
 
   template<typename T>
-  std::add_rvalue_reference_t<T> our_declval();
+  T wrap(Strong_type_type<T> const& val) {
+    return T{ impl::wrap_escape_hatch, val };
+  }
   template<typename T>
-  using Unwrap = decltype(unwrap(our_declval<T>()));
+  T wrap(Strong_type_type<T>&& val) {
+    return T{ impl::wrap_escape_hatch, std::move(val) };
+  }
 
   namespace defaults {
     /*Default conversion operator functor*/
@@ -479,17 +492,22 @@ namespace dlib::strong_type {
   namespace wrapping {
     /*Wrap the output in a strongvalue the same as the ith type*/
     template<typename Nested, size_t i>
-    struct Wrap_as_ith_arg {
+    struct Wrap_as_ith {
       template<typename ...Args>
       static constexpr bool enabled = std::is_invocable_v<Nested, Args...>;
 
       template<typename ...Args, typename = std::enable_if_t<enabled<Args...>>>
       constexpr decltype(auto) operator()(Args&&... args) const {
-        return GetEx<i, std::decay_t<Args>...>::wrap(
+        return wrap<GetEx<i, std::decay_t<Args>...>>(
           Nested{}(std::forward<Args>(args)...));
       }
     };
 
+    template<typename Nested>
+    using Wrap_as_first = Wrap_as_ith<Nested, 0>;
+    template<typename Nested>
+    using Wrap_as_second = Wrap_as_ith<Nested, 1>;
+    
     /*Wrap the result as a Wrapping*/
     template<typename Nested, typename Wrapping>
     struct Static_wrapping {
@@ -498,13 +516,13 @@ namespace dlib::strong_type {
 
       template<typename ...Args, typename = std::enable_if_t<enabled<Args...>>>
       constexpr decltype(auto) operator()(Args&&... args) const {
-        return Wrapping::wrap(Nested{}(std::forward<Args>(args)...));
+        return wrap<Wrapping>(Nested{}(std::forward<Args>(args)...));
       }
     };
 
     /*Returns the ith parameter as the result*/
     template<typename Nested, size_t i>
-    struct Return_ith_arg {
+    struct Return_ith {
       template<typename ...Args>
       static constexpr bool enabled = std::is_invocable_v<Nested, Args...>;
 
@@ -519,19 +537,35 @@ namespace dlib::strong_type {
         if constexpr (i == 0) {
           return std::forward<First>(first);
         } else {
-          return getIth<i - 1>(std::forward<Rest>(rest)...);
+          return get_ith_<i - 1>(std::forward<Rest>(rest)...);
         }
       }
     };
   
+    template<typename Nested>
+    using Return_first = Return_ith<Nested, 0>;
+    template<typename Nested>
+    using Return_second = Return_ith<Nested, 1>;
+
     template<typename Nested>
     struct Unwrap_all {
       template<typename ...Args>
       static constexpr bool enabled = std::is_invocable_v<Nested, Unwrap<Args>...>;
 
       template<typename ...Args, typename = std::enable_if_t<enabled<Args...>>>
-      constexpr decltype(auto) operator()(Args&&... args) {
+      constexpr decltype(auto) operator()(Args&&... args) const {
         return Nested{}(unwrap(std::forward<Args>(args))...);
+      }
+    };
+
+    template<typename Nested>
+    struct Unwrap_first {
+      template<typename First, typename ...Rest>
+      static constexpr bool enabled = std::is_invocable_v<Nested, Unwrap<First>, Rest...>;
+
+      template<typename First, typename ...Rest, typename = std::enable_if_t<enabled<First, Rest...>>>
+      constexpr decltype(auto) operator()(First&& first, Rest&&... rest) const {
+        return Nested{}(unwrap(std::forward<First>(first)), std::forward<Rest>(rest)...);
       }
     };
   }
@@ -631,7 +665,7 @@ namespace dlib::strong_type {
       template<typename Functor>
       using Ex = Holder<Functor>;
 
-      using Allow = Ex<wrapping::Unwrap_all<Default>>;
+      using Allow = Ex<Default>;
     };
     /*An operator with 1 arg (e.g. [], =)*/
     template<template<typename Functor> typename Holder, typename Default>
@@ -640,7 +674,7 @@ namespace dlib::strong_type {
       using Ex = Holder<Functor>;
 
       template<typename Arg>
-      using Allow = Ex<filters::Right_is<wrapping::Unwrap_all<Default>, Arg>>;
+      using Allow = Ex<filters::Right_is<Default, Arg>>;
     };
 
     /*An operator with 1 arg, but either side (e.g. +)*/
@@ -650,12 +684,12 @@ namespace dlib::strong_type {
       using Ex = Holder<Functor>;
 
       template<typename Right>
-      using LeftOf = Ex<filters::Right_is<wrapping::Unwrap_all<Default>, Right>>;
+      using LeftOf = Ex<filters::Right_is<Default, Right>>;
 
       template<typename Left>
-      using RightOf = Ex<filters::Left_is<wrapping::Unwrap_all<Default>, Left>>;
+      using RightOf = Ex<filters::Left_is<Default, Left>>;
 
-      using Self = Ex<filters::Both_same<wrapping::Unwrap_all<Default>>>;
+      using Self = Ex<filters::Both_same<Default>>;
     };
 
     /*An operator with a variadic number of args (e.g. ())*/
@@ -684,67 +718,140 @@ namespace dlib::strong_type {
   using Convert_to = impl::Convert_to<defaults::Convert_to<To>>;
 
   /*<*/
-  using Less = impl::Binary_op<impl::Less, defaults::Less>;
+  using Less = impl::Binary_op<impl::Less,
+    wrapping::Unwrap_all<defaults::Less>>;
   /*>*/
-  using Greater = impl::Binary_op<impl::Greater, defaults::Greater>;
+  using Greater = impl::Binary_op<impl::Greater,
+    wrapping::Unwrap_all<defaults::Greater>>;
   /*<=*/
-  using Less_equal = impl::Binary_op<impl::Less_equal, defaults::Less_equal>;
+  using Less_equal = impl::Binary_op<impl::Less_equal,
+    wrapping::Unwrap_all<defaults::Less_equal>>;
   /*>=*/
-  using Greater_equal = impl::Binary_op<impl::Greater_equal, defaults::Greater_equal>;
+  using Greater_equal = impl::Binary_op<impl::Greater_equal,
+    wrapping::Unwrap_all<defaults::Greater_equal>>;
   /*==*/
-  using Equal = impl::Binary_op<impl::Equal, defaults::Equal>;
+  using Equal = impl::Binary_op<impl::Equal,
+    wrapping::Unwrap_all<defaults::Equal>>;
   /*!=*/
-  using Not_equal = impl::Binary_op<impl::Not_equal, defaults::Not_equal>;
+  using Not_equal = impl::Binary_op<impl::Not_equal,
+    wrapping::Unwrap_all<defaults::Not_equal>>;
   /*=*/
-  using Assign = impl::Unary_op<impl::Assign, defaults::Assign>;
+  using Assign = impl::Unary_op<impl::Assign,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Assign>>>;
   /*+*/
-  using Add = impl::Binary_op<impl::Add, defaults::Add>;
+  using Add = impl::Binary_op<impl::Add,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Add>>>;
   /*+=*/
-  using Add_assign = impl::Binary_op<impl::Add_assign, defaults::Add_assign>;
+  using Add_assign = impl::Binary_op<impl::Add_assign,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Add_assign>>>;
   /*-*/
-  using Sub = impl::Binary_op<impl::Sub, defaults::Sub>;
+  using Sub = impl::Binary_op<impl::Sub,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Sub>>>;
   /*-=*/
-  using Sub_assign = impl::Binary_op<impl::Sub_assign, defaults::Sub_assign>;
+  using Sub_assign = impl::Binary_op<impl::Sub_assign,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Sub_assign>>>;
   /***/
-  using Mult = impl::Binary_op<impl::Mult, defaults::Mult>;
+  using Mult = impl::Binary_op<impl::Mult,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Mult>>>;
   /**=*/
-  using Mult_assign = impl::Binary_op<impl::Mult_assign, defaults::Mult_assign>;
-  using Div = impl::Binary_op<impl::Div, defaults::Div>;
-  using Div_assign = impl::Binary_op<impl::Div_assign, defaults::Div_assign>;
-  using Mod = impl::Binary_op<impl::Mod, defaults::Mod>;
-  using Mod_assign = impl::Binary_op<impl::Mod_assign, defaults::Mod_assign>;
-  using Binary_and = impl::Binary_op<impl::Binary_and, defaults::Binary_and>;
-  using Binary_and_assign = impl::Binary_op<impl::Binary_and_assign, defaults::Binary_and_assign>;
-  using Binary_or = impl::Binary_op<impl::Binary_or, defaults::Binary_or>;
-  using Binary_or_assign = impl::Binary_op<impl::Binary_or_assign, defaults::Binary_or_assign>;
-  using Xor = impl::Binary_op<impl::Xor, defaults::Xor>;
-  using Xor_assign = impl::Binary_op<impl::Xor_assign, defaults::Xor_assign>;
-  using Left_shift = impl::Binary_op<impl::Left_shift, defaults::Left_shift>;
-  using Left_shift_assign = impl::Binary_op<impl::Left_shift_assign, defaults::Left_shift_assign>;
-  using Right_shift = impl::Binary_op<impl::Right_shift, defaults::Right_shift>;
-  using Right_shift_assign = impl::Binary_op<impl::Right_shift_assign, defaults::Right_shift_assign>;
-  using Binary_not = impl::Nullary_op<impl::Binary_not, defaults::Binary_not>;
-  using Unary_plus = impl::Nullary_op<impl::Unary_plus, defaults::Unary_plus>;
-  using Unary_minus = impl::Nullary_op<impl::Unary_minus, defaults::Unary_minus>;
+  using Mult_assign = impl::Binary_op<impl::Mult_assign,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Mult_assign>>>;
+  /*/*/
+  using Div = impl::Binary_op<impl::Div,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Div>>>;
+  /*/=*/
+  using Div_assign = impl::Binary_op<impl::Div_assign,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Div_assign>>>;
+  /*%*/
+  using Mod = impl::Binary_op<impl::Mod,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Mod>>>;
+  /*%=*/
+  using Mod_assign = impl::Binary_op<impl::Mod_assign,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Mod_assign>>>;
+  /*&*/
+  using Binary_and = impl::Binary_op<impl::Binary_and,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Binary_and>>>;
+  /*&=*/
+  using Binary_and_assign = impl::Binary_op<impl::Binary_and_assign,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Binary_and_assign>>>;
+  /*|*/
+  using Binary_or = impl::Binary_op<impl::Binary_or,
+    wrapping::Wrap_as_first < wrapping::Unwrap_all<defaults::Binary_or>>>;
+  /*|=*/
+  using Binary_or_assign = impl::Binary_op<impl::Binary_or_assign,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Binary_or_assign>>>;
+  /*^*/
+  using Xor = impl::Binary_op<impl::Xor,
+    wrapping::Wrap_as_first < wrapping::Unwrap_all< defaults::Xor>>>;
+  /*^=*/
+  using Xor_assign = impl::Binary_op<impl::Xor_assign,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Xor_assign>>>;
+  /*<<*/
+  using Left_shift = impl::Binary_op<impl::Left_shift,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Left_shift>>>;
+  /*<<=*/
+  using Left_shift_assign = impl::Binary_op<impl::Left_shift_assign,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Left_shift_assign>>>;
+  /*>>*/
+  using Right_shift = impl::Binary_op<impl::Right_shift,
+    wrapping::Wrap_as_first < wrapping::Unwrap_all< defaults::Right_shift>>>;
+  /*>>=*/
+  using Right_shift_assign = impl::Binary_op<impl::Right_shift_assign,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Right_shift_assign>>>;
+  /*~*/
+  using Binary_not = impl::Nullary_op<impl::Binary_not,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Binary_not>>>;
+  /*+*/
+  using Unary_plus = impl::Nullary_op<impl::Unary_plus,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Unary_plus>>>;
+  /*-*/
+  using Unary_minus = impl::Nullary_op<impl::Unary_minus,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Unary_minus>>>;
 
-  using Subscript = impl::Unary_op<impl::Subscript, defaults::Subscript>;
+  /*[]*/
+  using Subscript = impl::Unary_op<impl::Subscript, 
+    wrapping::Unwrap_all<defaults::Subscript>>;
 
-  using Pre_increment = impl::Nullary_op<impl::Pre_increment, defaults::Pre_increment>;
-  using Pre_decrement = impl::Nullary_op<impl::Pre_decrement, defaults::Pre_decrement>;
-  using Post_increment = impl::Nullary_op<impl::Post_increment, defaults::Post_increment>;
-  using Post_decrement = impl::Nullary_op<impl::Post_decrement, defaults::Post_decrement>;
+  /*++*/
+  using Pre_increment = impl::Nullary_op<impl::Pre_increment,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Pre_increment>>>;
+  /*--*/
+  using Pre_decrement = impl::Nullary_op<impl::Pre_decrement,
+    wrapping::Return_first<wrapping::Unwrap_all<defaults::Pre_decrement>>>;
+  /*++*/
+  using Post_increment = impl::Nullary_op<impl::Post_increment,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Post_increment>>>;
+  /*--*/
+  using Post_decrement = impl::Nullary_op<impl::Post_decrement,
+    wrapping::Wrap_as_first<wrapping::Unwrap_all<defaults::Post_decrement>>>;
 
-  using Logical_not = impl::Nullary_op<impl::Logical_not, defaults::Logical_not>;
-  using Logical_and = impl::Binary_op<impl::Logical_and, defaults::Logical_and>;
-  using Logical_or = impl::Binary_op<impl::Logical_or, defaults::Logical_or>;
+  /*!*/
+  using Logical_not = impl::Nullary_op<impl::Logical_not,
+    wrapping::Unwrap_all<defaults::Logical_not>>;
+  /*&&*/
+  using Logical_and = impl::Binary_op<impl::Logical_and,
+    wrapping::Unwrap_all<defaults::Logical_and>>;
+  /*||*/
+  using Logical_or = impl::Binary_op<impl::Logical_or,
+    wrapping::Unwrap_all<defaults::Logical_or>>;
 
-  using Indirection = impl::Nullary_op<impl::Indirection, defaults::Indirection>;
-  using Address_of = impl::Nullary_op<impl::Address_of, defaults::Address_of>;
-  using Member_of_pointer = impl::Nullary_op<impl::Member_of_pointer, defaults::Member_of_pointer>;
+  /***/
+  using Indirection = impl::Nullary_op<impl::Indirection,
+    wrapping::Unwrap_all<defaults::Indirection>>;
+  /*&*/
+  using Address_of = impl::Nullary_op<impl::Address_of, 
+    wrapping::Unwrap_all<defaults::Address_of>>;
+  /*->*/
+  using Member_of_pointer = impl::Nullary_op<impl::Member_of_pointer,
+    wrapping::Unwrap_all<defaults::Member_of_pointer>>;
   //NYI using PointerToMemberOfPointer = impl::Unary_op<impl::PointerToMemberOfPointer>;
 
-  using Function_call = impl::Variadic_op<impl::Function_call, defaults::Function_call>;
-  using Comma = impl::Binary_op<impl::Comma, defaults::Comma>;
+  /*()*/
+  using Function_call = impl::Variadic_op<impl::Function_call,
+    wrapping::Unwrap_first<defaults::Function_call>>;
+  /*,*/
+  using Comma = impl::Binary_op<impl::Comma, 
+    wrapping::Return_second<wrapping::Unwrap_all<defaults::Comma>>>;
 
   using Orderable = impl::NestedExpandTo<Less::Self, Greater::Self, Less_equal::Self, Greater_equal::Self, Equal::Self, Not_equal::Self>;
 
@@ -753,6 +860,11 @@ namespace dlib::strong_type {
   using Group = impl::NestedExpandTo<Add::Self, Add_assign::Self, Sub::Self, Sub_assign::Self>;
 
   using Field = impl::NestedExpandTo<Add::Self, Sub::Self, Mult::Self, Div::Self, Add_assign::Self, Sub_assign::Self, Mult_assign::Self, Div_assign::Self>;
+
+  template<typename T, typename ...Args>
+  static T wrap(Args&&... args) {
+    return T{ T::escapeHatch_, std::forward<Args>(args)... };
+  }
 
   namespace impl {
 
@@ -860,9 +972,14 @@ namespace dlib::strong_type {
       private AllowCopy<Options_>,
       private AllowMove<Options_> {
     public:
-      using Strong_type_tag = void;
+      using Strong_type_tag = Strong_type;
       using Type = Type_;
       using Options = Options_;
+
+      template<typename T>
+      friend T dlib::strong_type::wrap(Strong_type_type<T> const& val);
+      template<typename T>
+      friend T dlib::strong_type::wrap(Strong_type_type<T>&& val);
 
       template<typename ...Args, typename = AllowConstructor<Construct<Args...>, Options>>
       explicit Strong_type(Args&&... args) :
@@ -935,19 +1052,13 @@ namespace dlib::strong_type {
       Type const& get() const noexcept {
         return val_;
       }
-
-      template<typename ...Args>
-      static Strong_type wrap(Args&&... args) {
-        return Strong_type{ escapeHatch_, std::forward<Args>(args)... };
-      }
     private:
-      struct EscapeHatch {};
+      Strong_type(Wrap_escape_hatch, Type const& val) :
+        val_{ val} {
 
-      static constexpr EscapeHatch escapeHatch_{};
-
-      template<typename ...Args>
-      Strong_type(EscapeHatch, Args&&... args) :
-        val_{ std::forward<Args>(args)... } {
+      }
+      Strong_type(Wrap_escape_hatch, Type&& val) :
+        val_{ std::move(val) } {
 
       }
 

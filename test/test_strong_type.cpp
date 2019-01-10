@@ -27,9 +27,11 @@ BOOST_AUTO_TEST_CASE(strong_type_default_construct) {
 
 BOOST_AUTO_TEST_CASE(strong_type_add_same) {
   struct Sv :
-    public strong_type::Strong_type<int, strong_type::Construct<int>, strong_type::Add::Self, strong_type::Copy> {
+    public strong_type::Strong_type<int, strong_type::Construct<int>, strong_type::Add::Self> {
     using Strong_type::Strong_type;
   };
+
+  
 
   Sv sv1{ 0 };
   Sv sv2{ 1 };
@@ -61,4 +63,5 @@ BOOST_AUTO_TEST_CASE(strong_type_increment) {
 
   Sv sv{ 1 };
   ++sv;
+  Sv* test = &sv;
 }
