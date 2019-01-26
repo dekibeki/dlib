@@ -8,9 +8,9 @@ namespace {
 
   Testing_soa generate_testing_soa() {
     Testing_soa returning;
-    returning.push(std::numeric_limits<int>::min(), std::numeric_limits<float>::max(), "row1");
-    returning.push(std::numeric_limits<int>::max(), 0.0f, "row2");
-    returning.push(0, std::numeric_limits<float>::min(), "row3");
+    returning.push_back(std::numeric_limits<int>::min(), std::numeric_limits<float>::max(), "row1");
+    returning.push_back(std::numeric_limits<int>::max(), 0.0f, "row2");
+    returning.push_back(0, std::numeric_limits<float>::min(), "row3");
 
     return returning;
   }

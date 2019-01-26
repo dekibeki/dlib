@@ -22,6 +22,7 @@ set(dlibSources
   ${dlibSrc}/util.cpp
   ${dlibSrc}/cache.cpp
   ${dlibSrc}/pool.cpp
+  ${dlibSrc}/iterators.cpp
   ${dlibSrc}/outcome.cpp
   ${dlibSrc}/outcome_orig.cpp
   ${dlibSrc}/meta.cpp
@@ -32,9 +33,9 @@ set(dlibSources
   ${dlibSrc}/finder_interface.cpp
   ${dlibSrc}/stmt.cpp
   ${dlibSrc}/serialization.cpp
-  ${dlibSrc}/unordered_vector.cpp
   ${dlibSrc}/soa.cpp
   ${dlibSrc}/vector.cpp
+  ${dlibSrc}/vector_adaptors.cpp
 )
 
 set(dlibTests
@@ -45,7 +46,7 @@ set(dlibTests
   ${dlibTest}/test_finder_interface.cpp
   ${dlibTest}/test_serialization.cpp
   ${dlibTest}/test_arrays.cpp
-  ${dlibTest}/test_unordered_vector.cpp
+  ${dlibTest}/test_vector_adaptors.cpp
   ${dlibTest}/test_soa.cpp
   ${dlibTest}/test_strong_type.cpp
   )

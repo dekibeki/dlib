@@ -4,385 +4,118 @@
 #include <utility>
 #include <iterator>
 #include <utility>
-#include <dlib/unordered_vector.hpp>
-#include <dlib/meta.hpp>
+#include <vector>
+#include <dlib/vector_adaptors.hpp>
+#include <dlib/util.hpp>
+
+#include <dlib/iterators.hpp>
 
 namespace dlib {
 
   namespace soa_impl {
-    template<typename ...Args>
-    using Vector_impl = Unordered_vector<Args...>;
-
-    using size_type = Vector_impl<int>::size_type;
-    using difference_type = Vector_impl<int>::difference_type;
-
-    template<typename ...Members>
-    class Soa_proxy_reference {
-    public:
-      Soa_proxy_reference(Members&... members) :
-        members_(members...) {
-
-      }
-      Soa_proxy_reference(Soa_proxy_reference const&) noexcept = default;
-      Soa_proxy_reference(Soa_proxy_reference&&) noexcept = default;
-
-      Soa_proxy_reference& operator=(Soa_proxy_reference const& other) {
-        (..., (this->get<Members>() = other->get<Members>()));
-        return *this;
-      }
-      Soa_proxy_reference& operator=(Soa_proxy_reference&& other) {
-        (..., (this->get<Members>() = std::move(other.get<Members>())));
-        return *this;
-      }
-      Soa_proxy_reference& operator=(std::tuple<std::reference_wrapper<Members>...> const& other) {
-        (..., (this->get<Members>() = std::get<std::reference_wrapper<Members>>(other).get()));
-        return *this;
-      }
-      Soa_proxy_reference& operator=(std::tuple<std::reference_wrapper<Members>...>&& other) {
-        (..., (this->get<Members>() = std::move(std::get<std::reference_wrapper<Members>>(other).get())));
-        return *this;
-      }
-
-      template<size_t i>
-      auto& get() const noexcept {
-        return std::get<i>(members_).get();
-      }
-
-      template<typename T>
-      T& get() const noexcept {
-        return std::get<std::reference_wrapper<T>>(members_).get();
-      }
-
-      void swap(Soa_proxy_reference& other) {
-        (..., std::swap(this->get<Members>(), other.get<Members>()));
-      }
-      operator std::tuple<std::reference_wrapper<Members>...>&() noexcept {
-        return members_;
-      }
-      operator std::tuple<std::reference_wrapper<Members>...> const&() const noexcept {
-        return members_;
-      }
-    private:
-      std::tuple<std::reference_wrapper<Members>...> members_;
-    };
-
-    template<typename ...Members>
-    class Soa_proxy_pointer {
-    public:
-      Soa_proxy_pointer(Members&... members) noexcept :
-        members_{ members... } {
-
-      }
-
-      std::tuple<std::reference_wrapper<Members>...>* operator->() noexcept {
-        return &members_;
-      }
-      const std::tuple<std::reference_wrapper<Members>...>* operator->() const noexcept {
-        return &members_;
-      }
-    private:
-      std::tuple<std::reference_wrapper<Members>...> members_;
-    };
-
-    template<bool is_const, typename ...Members>
-    class Soa_iterator_ex {
-    public:
-      static_assert(sizeof...(Members) > 0,
-        "Why have an iterator with no members?");
-      template<typename T>
-      using Iterator = std::conditional_t<is_const,
-        typename Vector_impl<T>::const_iterator,
-        typename Vector_impl<T>::iterator>;
-
-      using difference_type = ::dlib::soa_impl::difference_type;
-      using value_type = std::conditional_t<is_const,
-        std::tuple<std::reference_wrapper<const Members>...>,
-        std::tuple<std::reference_wrapper<Members>...>>;
-      using pointer = std::conditional_t<is_const,
-        Soa_proxy_pointer<const Members...>,
-        Soa_proxy_pointer<Members...>>;
-      using reference = std::conditional_t<is_const,
-        Soa_proxy_reference<const Members...>,
-        Soa_proxy_reference<Members...>>;
-      using iterator_category = std::random_access_iterator_tag;
-
-      Soa_iterator_ex() noexcept :
-        iters_{} {
-
-      }
-
-      Soa_iterator_ex(Iterator<Members>... iters) noexcept :
-        iters_{ std::move(iters)... } {
-
-      }
-
-      static Soa_iterator_ex make(Iterator<Members>... iters) noexcept {
-        return Soa_iterator_ex{ std::move(iters)... };
-      }
-      template<typename Target>
-      Iterator<Target>& get() noexcept {
-        return std::get<Iterator<Target>>(iters_);
-      }
-      template<typename Target>
-      Iterator<Target> const& get() const noexcept {
-        return std::get<Iterator<Target>>(iters_);
-      }
-      void swap(Soa_iterator_ex& other) noexcept {
-        std::swap(iters_, other.iters_);
-      }
-      reference operator*() const noexcept {
-        return reference{ *get<Members>()... };
-      }
-      reference operator[](difference_type i) const noexcept {
-        return *(*this + i);
-      }
-      pointer operator->() const noexcept {
-        return Soa_proxy_pointer{ *get<Members>()... };
-      }
-      Soa_iterator_ex& operator++() noexcept {
-        (..., ++get<Members>());
-        return *this;
-      }
-      Soa_iterator_ex operator++(int) noexcept {
-        Soa_iterator_ex copy{ *this };
-        this->operator++();
-        return copy;
-      }
-      Soa_iterator_ex& operator--() noexcept {
-        (..., --get<Members>());
-        return *this;
-      }
-      Soa_iterator_ex operator--(int) noexcept {
-        Soa_iterator_ex copy{ *this };
-        this->operator--();
-        return copy;
-      }
-      Soa_iterator_ex& operator+=(difference_type i) noexcept {
-        (..., (get<Members>() += i));
-        return *this;
-      }
-      Soa_iterator_ex& operator-=(difference_type i) noexcept {
-        (..., (get<Members>() -= i));
-        return *this;
-      }
-      difference_type operator-(Soa_iterator_ex const& other) const noexcept {
-        return std::get<0>(iters_) - std::get<0>(other.iters_);
-      }
-      bool operator==(Soa_iterator_ex const& other) const noexcept {
-        return std::get<0>(iters_) == std::get<0>(other.iters_);
-      }
-      bool operator!=(Soa_iterator_ex const& other) const noexcept {
-        return !this->operator==(other);
-      }
-      bool operator<(Soa_iterator_ex const& other) const noexcept {
-        return std::get<0>(iters_) < std::get<0>(other.iters_);
-      }
-      bool operator<=(Soa_iterator_ex const& other) const noexcept {
-        return this->operator<(other) || this->operator==(other);
-      }
-      bool operator>(Soa_iterator_ex const& other) const noexcept {
-        return !this->operator<=(other);
-      }
-      bool operator>=(Soa_iterator_ex const& other) const noexcept {
-        return !this->operator<(other);
-      }
-    private:
-      std::tuple<Iterator<Members>...> iters_;
-    };
-
-    template<bool is_const, typename ...Members>
-    Soa_iterator_ex<is_const, Members...> operator+(Soa_iterator_ex<is_const, Members...> const& me, difference_type const& i) noexcept {
-      Soa_iterator_ex<is_const, Members...> copy{ me };
-      copy += i;
-      return copy;
-    }
-
-    template<bool is_const, typename ...Members>
-    Soa_iterator_ex<is_const, Members...> operator+(difference_type const& i, Soa_iterator_ex<is_const, Members...> const& me) noexcept {
-      Soa_iterator_ex<is_const, Members...> copy{ me };
-      copy += i;
-      return copy;
-    }
-
-    template<bool is_const, typename ...Members>
-    Soa_iterator_ex<is_const, Members...> operator-(Soa_iterator_ex<is_const, Members...> const& me, difference_type const& i) noexcept {
-      Soa_iterator_ex<is_const, Members...> copy{ me };
-      copy -= i;
-      return copy;
-    }
-
-    template<typename ...Members>
-    using Soa_iterator = Soa_iterator_ex<false, Members...>;
-
-    template<typename ...Members>
-    using Soa_const_iterator = Soa_iterator_ex<true, Members...>;
-
-    template<bool is_const, typename ...Members>
-    void swap(Soa_iterator_ex<is_const, Members...>& iter1, Soa_iterator_ex<is_const, Members...>& iter2) noexcept {
-      iter1.swap(iter2);
-    }
-
-    template<typename ...Members>
-    void swap(Soa_proxy_reference<Members...> v1, Soa_proxy_reference<Members...> v2) {
-      v1.swap(v2);
-    }
+    template<typename T>
+    using Vector_impl = Unordered_vector<T, std::vector>;    
   
     template<typename ...Members>
     class Soa_impl {
     public:
-      
-      template<typename T>
-      using Vector = Vector_impl<T>;
-      template<typename T>
-      using Inner_iterator = typename Vector<T>::iterator;
-      template<typename T>
-      using Inner_const_iterator = typename Vector<T>::const_iterator;
+      template<typename ...Ts>
+      using Iterator = Soa_iterator<typename Ts::iterator...>;
+      template<typename ...Ts>
+      using Const_iterator = Soa_iterator<typename Ts::const_iterator...>;
 
       using size_type = size_t;
-      using iterator = Soa_iterator<Members...>;
-      using const_iterator = Soa_const_iterator<Members...>;
-      using reference = Soa_proxy_reference<Members...>;
-      using const_reference = Soa_proxy_reference<const Members...>;
+      using iterator = Iterator<Members...>;
+      using const_iterator = Const_iterator<Members...>;
+      using reference = typename iterator::reference;
+      using const_reference = typename const_iterator::reference;
 
-
-
-      template<typename Member>
-      Member& get(size_type i) noexcept {
-        return get<Member>()[i];
-      }
-      template<typename Member>
-      Member const& get(size_type i) const noexcept {
-        return get<Member>()[i];
-      }
-      template<typename Member>
-      auto begin_underlying() noexcept {
-        return get_underlying<Member>().begin();
-      }
-      template<typename Member>
-      auto begin_underlying() const noexcept {
-        return get_underlying<Member>().begin();
-      }
-      template<typename Member>
-      auto cbegin_underlying() const noexcept {
-        return get_underlying<Member>().cbegin();
-      }
-      template<typename Member>
-      auto end_underlying() noexcept {
-        return get_underlying<Member>().end();
-      }
-      template<typename Member>
-      auto end_underlying() const noexcept {
-        return get_underlying<Member>().end();
-      }
-      template<typename Member>
-      auto cend_underlying() const noexcept {
-        return get_underlying<Member>().cend();
-      }
       iterator begin() noexcept {
-        return iterator{ begin_underlying<Members>()... };
+        return std::apply(
+          [](auto&&... vecs) { return iterator{ vecs.begin()... };},
+          holding_);
       }
       const_iterator begin() const noexcept {
-        return const_iterator{ begin_underlying<Members>()... };
+        return std::apply(
+          [](auto&&... vecs) {return iterator{ vecs.begin()... };},
+          holding_);
       }
       const_iterator cbegin() const noexcept {
-        return const_iterator{ cbegin_underlying<Members>()... };
-      }
-      template<typename ...Targets>
-      auto begin() noexcept {
-        return Soa_iterator<Targets...>{ begin_underlying<Targets>()... };
-      }
-      template<typename ...Targets>
-      auto begin() const noexcept {
-        return Soa_const_iterator<Targets...>{ begin_underlying<Targets>()... };
-      }
-      template<typename ...Targets>
-      auto cbegin() const noexcept {
-        return Soa_const_iterator<Targets...>{ cbegin_underlying<Targets>()... };
+        return std::apply(
+          [](auto&&... vecs) {return make_soa_iterator(vecs.cbegin()...);},
+          holding_);
       }
       iterator end() noexcept {
-        return iterator{ end_underlying<Members>()... };
+        return std::apply(
+          [](auto&&... vecs) {return iterator{ vecs.end()... };},
+          holding_);
       }
       const_iterator end() const noexcept {
-        return const_iterator{ end_underlying<Members>()... };
+        return std::apply(
+          [](auto&&... vecs) {return iterator{ vecs.end()... };},
+          holding_);
       }
       const_iterator cend() const noexcept {
-        return const_iterator{ cend_underlying<Members>()... };
+        return std::apply(
+          [](auto&&... vecs) {return iterator{ vecs.cend()... };},
+          holding_);
       }
-      template<typename ...Targets>
-      auto end() noexcept {
-        return Soa_iterator<Targets...>{ end_underlying<Targets>()... };
-      }
-      template<typename ...Targets>
-      auto end() const noexcept {
-        return Soa_const_iterator<Targets...>{ end_underlying<Targets>()... };
-      }
-      template<typename ...Targets>
-      auto cend() const noexcept {
-        return Soa_const_iterator<Targets...>{ cend_underlying<Targets>()... };
-      }
+      void push_back(typename Members::value_type const&... members) noexcept {
+        std::tuple<typename Members::value_type const&...> members_tuple{ members... };
 
-      template<typename Member>
-      Vector<Member>& get_underlying() noexcept {
-        return std::get<Vector<Member>>(holding_);
+        for_each_tuples(
+          [](auto& vec, auto const& member) { vec.push_back(member);},
+          holding_, members_tuple);
       }
-      template<typename Member>
-      Vector<Member> const& get_underlying() const noexcept {
-        return std::get<Vector<Member>>(holding_);
+      void push_back(typename Members::value_type&&... members) noexcept {
+        std::tuple<typename Members::value_type&&...> members_tuple{ std::move(members)... };
+
+        for_each_tuples(
+          [](auto& vec, auto&& member) {vec.push_back(std::move(member));},
+          holding_, members_tuple);
       }
-      void push(Members... members) noexcept {
-        (..., get_underlying<Members>().emplace(std::move(members)));
+      void push_back(reference const& refs) noexcept {
+        for_each_tuples(
+          [](auto& vec, auto const& ref) { vec.push_back(ref.get());},
+          holding_, refs.get_underlying());
       }
-      void push(reference const& ref) noexcept {
-        (..., get_underlying<Members>().emplace(std::get<Members>(ref)));
+      void push_back(reference&& refs) noexcept {
+        for_each_tuples(
+          [](auto& vec, auto&& ref) { vec.push_back(std::move(ref.get()));},
+          holding_, refs.get_underlying());
       }
-      void push(reference&& ref) noexcept {
-        (..., get_underlying<Members>().emplace(std::get<Members>(ref)));
-      }
-      void push(const_reference const& ref) noexcept {
-        (..., get_underlying<Members>().emplace(std::get<const Members>(ref)));
-      }
-      void erase(size_type i) noexcept {
-        return iterator{ 
-          get_underlying<Members>().erase(
-            get_underlying<Members>().begin() + i)... };
-      }
-      iterator erase(size_type start, size_type end) {
-        return iterator{
-          get_underlying<Members>().erase(
-            get_underlying<Members>().begin() + start,
-            get_underlying<Members>().begin() + end)... };
-      }
-      void erase(iterator iter) noexcept {
-        return iterator{
-          get_underlying<Members>().erase(iter.template get<Members>())... };
+      iterator erase(iterator iter) noexcept {
+        return std::apply(
+          [](auto&&... new_iters) { return iterator{ std::move(new_iters)... };},
+          for_each_tuples(
+            [](auto& vec, auto const& iter) { return vec.erase(iter);},
+            holding_, iter.get_underlying()));
       }
       iterator erase(const_iterator iter) noexcept {
-        return iterator{
-          get_underlying<Members>().erase(iter.template get<Members>())... };
+        return std::apply(
+          [](auto&&... new_iters) { return iterator{ std::move(new_iters)... };},
+          for_each_tuples(
+            [](auto& vec, auto const& iter) { return vec.erase(iter);},
+            holding_, iter.get_underlying()));
       }
       iterator erase(iterator start, iterator end) noexcept {
-        return iterator{ get_underlying<Members>().erase(
-          start.template get<Members>(),
-          end.template get<Members>())... };
+        return std::apply(
+          [](auto&&... new_iters) { return iterator{ std::move(new_iters)... };},
+          for_each_tuples(
+            [](auto& vec, auto const& start, auto const& end) { return vec.erase(start, end);},
+            holding_, start.get_underlying(), end.get_underlying()));
       }
       iterator erase(const_iterator start, const_iterator end) noexcept {
-        return iterator{ get_underlying<Members>().erase(
-          start.template get<Members>(),
-          end.template get<Members>())... };
-      }
-
-      void move_element(size_t index, Soa_impl& to) noexcept {
-        to.push(std::move(get<Members>(index))...);
-        erase(index);
+        return std::apply(
+          [](auto&&... new_iters) { return iterator{ std::move(new_iters)... };},
+          for_each_tuples(
+            [](auto& vec, auto const& start, auto const& end) { return vec.erase(stat, end);},
+            holding_, start.get_underlying(), end.get_underlying()));
       }
 
       void move_element(iterator iter, Soa_impl& to) noexcept {
-        to.push(*iter);
+        to.push_back(std::move(*iter));
         erase(iter);
-      }
-
-      void move_element(const_iterator iter, Soa_impl& to) noexcept {
-        move_element(get_index_(iter), to);
       }
 
       bool empty() const noexcept {
@@ -394,27 +127,23 @@ namespace dlib {
       }
 
       void reserve(size_t i) noexcept {
-        (..., get_underlying<Members>().reserve(i));
+        std::apply(
+          [i](auto& vec) { vec.reserve(i); },
+          holding_);
       }
 
       reference operator[](size_type i) noexcept {
-        return reference{ get<Members>(i)... };
+        return std::apply(
+          [i](auto&&... vecs) { return reference{ vecs[i]... };},
+          holding_);
       }
       const_reference operator[](size_type i) const noexcept {
-        return const_reference{ get<Members>(i)... };
+        return std::apply(
+          [i](auto&&... vecs) { return const_reference{ vecs[i]... };},
+          holding_);
       }
     private:
-      template<typename ...Targets>
-      size_type get_index_(Soa_iterator<Targets...> const& iter) const noexcept {
-        using First_type = First<Targets...>;
-        return iter.get<First_type>() - get_underlying<First_type>();
-      }
-      template<typename ...Targets>
-      size_type get_index_(Soa_const_iterator<Targets...> const& iter) const noexcept {
-        using First_type = First<Targets...>;
-        return iter.get<First_type>() - get_underlying<First_type>();
-      }
-      std::tuple<Vector<Members>...> holding_;
+      std::tuple<Members...> holding_;
     };
 
     template<typename ...Members>
@@ -422,52 +151,8 @@ namespace dlib {
   }
   
   template<typename ...Members>
-  using Soa = soa_impl::Soa_impl<Members...>;
+  using Soa = soa_impl::Soa_impl<soa_impl::Vector_impl<Members>...>;
 
   template<typename ...Members>
   using Aos = soa_impl::Aos_impl<Members...>;
-}
-
-namespace std {
-  template<typename ...Members>
-  class tuple_size<::dlib::soa_impl::Soa_proxy_reference<Members...>> :
-    public ::std::integral_constant<::std::size_t, sizeof...(Members)> {
-  };
-
-  template<typename First, typename ...Rest>
-  class tuple_element<0, ::dlib::soa_impl::Soa_proxy_reference<First, Rest...>> {
-  public:
-    using type = First;
-  };
-
-  template<::std::size_t i, typename First, typename ...Rest>
-  class tuple_element<i, ::dlib::soa_impl::Soa_proxy_reference<First, Rest...>> {
-  public:
-    using type = typename tuple_element<i - 1, ::dlib::soa_impl::Soa_proxy_reference<Rest...>>::type;
-  };
-
-  template<::std::size_t i, typename ...Members>
-  ::std::tuple_element_t<i, ::dlib::soa_impl::Soa_proxy_reference<Members...>>& get(::dlib::soa_impl::Soa_proxy_reference<Members...>& t) noexcept {
-    return t.template get<i>();
-  }
-
-  template<::std::size_t i, typename ...Members>
-  ::std::tuple_element_t<i, ::dlib::soa_impl::Soa_proxy_reference<Members...>> const& get(::dlib::soa_impl::Soa_proxy_reference<Members...> const& t) noexcept {
-    return t.template get<i>();
-  }
-
-  template<::std::size_t i, typename ...Members>
-  ::std::tuple_element_t<i, ::dlib::soa_impl::Soa_proxy_reference<Members...>> && get(::dlib::soa_impl::Soa_proxy_reference<Members...>&& t) noexcept {
-    return std::move(t.template get<i>());
-  }
-
-  template<::std::size_t i, typename ...Members>
-  ::std::tuple_element_t<i, ::dlib::soa_impl::Soa_proxy_reference<Members...>> && get(::dlib::soa_impl::Soa_proxy_reference<Members...>const && t) noexcept {
-    return std::move(t.template get<i>());
-  }
-
-  template<typename T, typename ...Members>
-  T& get(::dlib::soa_impl::Soa_proxy_reference<Members...> const& t) noexcept {
-    return t.template get<T>();
-  }
 }
