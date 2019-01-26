@@ -387,8 +387,18 @@ namespace dlib {
   }
 
   template<typename ...Iters>
-  Soa_iterator<std::decay_t<Iters>...> make_soa_iterator(Iters&&... iters) {
-    return Soa_iterator<std::decay_t<Iters>...>{std::forward<Iters>(iters)...};
+  Soa_iterator<Iters...> make_soa_iterator(Iters... iters) {
+    return {std::move(iters)...};
+  }
+
+  template<typename ...Containers>
+  auto make_soa_begin(Containers&&... containers) {
+    return make_soa_iterator(containers.begin()...);
+  }
+
+  template<typename ...Containers>
+  auto make_soa_end(Containers&&... containers) {
+    return make_soa_iterator(containers.end()...);
   }
 
   namespace iterators_impl {
