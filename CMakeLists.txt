@@ -34,6 +34,7 @@ set(dlibSources
   ${dlibSrc}/stmt.cpp
   ${dlibSrc}/serialization.cpp
   ${dlibSrc}/soa.cpp
+  ${dlibSrc}/soa_reference.cpp
   ${dlibSrc}/vector.cpp
   ${dlibSrc}/vector_adaptors.cpp
 )
@@ -44,6 +45,7 @@ set(dlibTests
   ${dlibTest}/test_cache.cpp
   ${dlibTest}/test_pool.cpp
   ${dlibTest}/test_finder_interface.cpp
+  ${dlibTest}/test_iterators.cpp
   ${dlibTest}/test_serialization.cpp
   ${dlibTest}/test_arrays.cpp
   ${dlibTest}/test_vector_adaptors.cpp

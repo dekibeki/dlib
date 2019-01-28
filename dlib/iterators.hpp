@@ -5,251 +5,257 @@
 #include <tuple>
 
 #include <dlib/util.hpp>
+#include <dlib/soa_reference.hpp>
 
 namespace dlib {
+  template<typename Iterator_tag>
+  constexpr bool is_at_least_bidirectional =
+    std::is_same_v<Iterator_tag, std::bidirectional_iterator_tag>
+    || std::is_same_v<Iterator_tag, std::random_access_iterator_tag>;
+
+  template<typename Iterator_tag>
+  constexpr bool is_at_least_random_access =
+    std::is_same_v<Iterator_tag, std::random_access_iterator_tag>;
+
+  template<typename Functor_, typename Inner_iterator_>
+  struct Converting_iterator {
+  public:
+    using Functor = Functor_;
+    using Inner_iterator = Inner_iterator_;
+    using Inner_iterator_traits = std::iterator_traits<Inner_iterator>;
+    using Inner_iterator_value_type = typename Inner_iterator_traits::value_type;
+    using Inner_iterator_reference = typename Inner_iterator_traits::reference;
+    static_assert(std::is_invocable_v<Functor, Inner_iterator_reference>);
+    using value_type = std::invoke_result_t<Functor, Inner_iterator_reference>;
+    using difference_type = typename Inner_iterator_traits::difference_type;
+    using pointer = value_type * ;
+    using reference = value_type & ;
+    using iterator_category = typename Inner_iterator_traits::iterator_category;
+
+    Converting_iterator(Functor functor = Functor()) :
+      inner{},
+      functor_{ std::move(functor) } {
+
+    }
+    Converting_iterator(Inner_iterator inner, Functor functor = Functor()) :
+      inner_{ std::move(inner) },
+      functor_{ std::move(functor) } {
+
+    }
+    Inner_iterator& get_inner() noexcept {
+      return inner_;
+    }
+    Inner_iterator const& get_inner() const noexcept {
+      return inner_;
+    }
+    Functor& get_functor() noexcept {
+      return functor_;
+    }
+    Functor const& get_functor() const noexcept {
+      return functor_;
+    }
+
+    value_type operator*() {
+      return functor_(*inner_);
+    }
+
+    pointer operator->() const {
+      return &this->operator*();
+    }
+
+    Converting_iterator& operator++() {
+      ++inner_;
+      return *this;
+    }
+
+    Converting_iterator operator++(int) {
+      Converting_iterator returning{ *this };
+      operator++();
+      return returning;
+    }
+
+    template<typename = std::enable_if_t<is_at_least_bidirectional<iterator_category>>>
+    Converting_iterator& operator--() {
+      --inner_;
+      return *this;
+    }
+
+    template<typename = std::enable_if_t<is_at_least_bidirectional<iterator_category>>>
+    Converting_iterator operator--(int) {
+      Converting_iterator returning{ *this };
+      operator--();
+      return returning;
+    }
+
+    template<typename = std::enable_if_t<is_at_least_random_access<iterator_category>>>
+    Converting_iterator& operator+=(difference_type n) {
+      inner_ += n;
+      return *this;
+    }
+
+    template<typename = std::enable_if_t<is_at_least_random_access<iterator_category>>>
+    Converting_iterator& operator-=(difference_type n) {
+      inner_ -= n;
+      return *this;
+    }
+
+    template<typename = std::enable_if_t<is_at_least_random_access<iterator_category>>>
+    difference_type operator-(Converting_iterator const& other) const {
+      return inner_ - other.inner_;
+    }
+
+    template<typename = std::enable_if_t<is_at_least_random_access<iterator_category>>>
+    Converting_iterator operator-(difference_type n) const {
+      Converting_iterator returning{ *this };
+      returning -= n;
+      return returning;
+    }
+
+    bool operator==(Converting_iterator const& other) const {
+      return inner_ == other.inner_;
+    }
+
+    bool operator!=(Converting_iterator const& other) const {
+      return inner != other.inner_;
+    }
+
+    template<typename = std::enable_if_t<is_at_least_random_access<iterator_category>>>
+    bool operator<(Converting_iterator const& other) const {
+      return inner_ < other.inner_;
+    }
+    template<typename = std::enable_if_t<is_at_least_random_access<iterator_category>>>
+    bool operator>(Converting_iterator const& other) const {
+      return inner_ > other.inner_;
+    }
+    template<typename = std::enable_if_t<is_at_least_random_access<iterator_category>>>
+    bool operator<=(Converting_iterator const& other) const {
+      return inner_ <= other.inner_;
+    }
+    template<typename = std::enable_if_t<is_at_least_random_access<iterator_category>>>
+    bool operator>=(Converting_iterator const& other) const {
+      return inner_ >= other.inner_;
+    }
+    template<typename = std::enable_if_t<is_at_least_random_access<iterator_category>>>
+    value_type operator[](difference_type i) const {
+      return functor_(inner_[i]);
+    }
+
+  private:
+    Inner_iterator inner_;
+    Functor functor_;
+  };
+  template<typename Functor, typename Inner>
+  Converting_iterator<Functor, Inner> operator+(Converting_iterator<Functor, Inner> const& first, typename Converting_iterator<Functor, Inner>::difference_type const& second) {
+    Converting_iterator copy{ first };
+    copy += second;
+    return copy;
+  }
+  template<typename Functor, typename Inner>
+  Converting_iterator<Functor, Inner> operator+(typename Converting_iterator<Functor, Inner>::difference_type first, Converting_iterator<Functor, Inner> const& second) {
+    Converting_iterator copy{ second };
+    copy += first;
+    return copy;
+  }
+
   namespace iterators_impl {
-    template<typename T, typename Inner_iterator_, template<typename> typename ...Additions>
-    struct Casting_iterator_core :
-      public Additions<Casting_iterator_core<T, Inner_iterator_, Additions...>>... {
-    public:
-      using Inner_iterator = Inner_iterator_;
-      using value_type = T;
-      using difference_type = typename std::iterator_traits<Inner_iterator>::difference_type;
-      using pointer = T * ;
-      using reference = T & ;
-      using iterator_category = typename std::iterator_traits<Inner_iterator>::iterator_category;
-
-      Casting_iterator_core() = default;
-      Casting_iterator_core(Inner_iterator inner) :
-        inner_{ std::move(inner) } {
-
-      }
-      Inner_iterator& get_inner() noexcept {
-        return inner_;
-      }
-      Inner_iterator const& get_inner() const noexcept {
-        return inner_;
-      }
-      pointer operator->() const {
-        return &this->operator*();
-      }
-
-      Casting_iterator_core& operator++() {
-        ++inner_;
-        return *this;
-      }
-
-      Casting_iterator_core operator++(int) {
-        Casting_iterator_core returning{ *this };
-        operator++();
-        return returning;
-      }
-
-      bool operator==(Casting_iterator_core const& other) const {
-        return inner_ == other.inner_;
-      }
-
-      bool operator!=(Casting_iterator_core const& other) const {
-        return inner != other.inner_;
-      }
-    private:
-      Inner_iterator inner_;
-    };
-
-    template<typename Parent, typename Me>
-    typename Parent::Inner_iterator& get_inner(Me* me) noexcept {
-      return static_cast<Parent*>(me)->get_inner();
-    }
-
-    template<typename Parent, typename Me>
-    typename Parent::Inner_iterator const& get_inner(const Me*) noexcept {
-      return static_cast<const Parent*>(me)->get_inner();
-    }
-
-    template<typename Parent>
+    template<typename To>
     struct Static_cast {
-      using reference = typename Parent::reference;
-
-      reference operator*() const {
-        return static_cast<reference>(*get_inner<Parent>(this));
-      }
-    };
-
-    template<typename Parent>
-    struct Reinterpret_cast {
-      using reference = typename Parent::reference;
-
-      reference operator*() const {
-        return reinterpret_cast<reference>(*get_inner<Parent>(this));
-      }
-    };
-
-    template<typename Parent>
-    struct Dynamic_cast {
-      using reference = typename Parent::reference;
-
-      reference operator*() const {
-        return dynamic_cast<reference>(*get_inner<Parent>(this));
-      }
-    };
-
-    template<typename Parent>
-    struct Bi_directional {
-      Parent& operator--() {
-        --get_inner<Parent>(this);
-        return static_cast<Parent&>(*this);
-      }
-
-      Parent operator--(int) {
-        Parent returning{ static_cast<Parent const&>(*this) };
-        operator--();
-        return returning;
-      }
-    };
-
-    template<typename Parent>
-    struct Random_access :
-      public Bi_directional<Parent> {
-      using difference_type = typename Parent::difference_type;
-      using reference = typename Parent::reference;
-
-      Parent& operator+=(difference_type n) {
-        get_inner<Parent>(this) += n;
-        return static_cast<Parent&>(*this);
-      }
-      Parent& operator-=(difference_type n) {
-        get_inner<Parent>(this) -= n;
-        return static_cast<Parent&>(*this);
-      }
-
-      difference_type operator-(Parent const& other) const {
-        return get_inner<Parent>(this) - get_inner<Parent>(&other);
-      }
-
-      Parent operator-(difference_type n) const {
-        Parent returning{ static_cast<Parent const&>(*this) };
-        get_inner<Parent>(&returning) - n;
-        return returning;
-      }
-
-      bool operator<(Parent const& other) const {
-        return get_inner<Parent>(this) < get_inner<Parent>(&other);
-      }
-      bool operator>(Parent const& other) const {
-        return get_inner<Parent>(this) > get_inner<Parent>(&other);
-      }
-      bool operator<=(Parent const& other) const {
-        return get_inner<Parent>(this) <= get_inner<Parent>(&other);
-      }
-      bool operator>=(Parent const& other) const {
-        return get_inner<Parent>(this) >= get_inner<Parent>(&other);
-      }
-      reference operator[](difference_type i) {
-        Parent copy{ static_cast<Parent const&>(this) };
-        copy += i;
-        return *copy;
-      }
-    };
-
-    template<typename Parent>
-    Parent operator+(Random_access<Parent> const& first, typename Parent::difference_type const& second) {
-      Parent copy{ static_cast<Parent const&>(first) };
-      copy += second;
-      return copy;
-    }
-    template<typename Parent>
-    Parent operator+(typename Parent::difference_type first, Random_access<Parent> const& second) {
-      Parent copy{ static_cast<Parent const&> (second) };
-      copy += first;
-      return copy;
-    }
-
-    template<typename Iterator>
-    using Iter_category = typename std::iterator_traits<Iterator>::iterator_category;
-
-    template<typename T, typename Iterator, template<typename> typename Caster>
-    using Casting_iterator =
-      std::conditional_t<std::is_same_v<Iter_category<Iterator>, std::random_access_iterator_tag>, Casting_iterator_core<T, Iterator, Caster, Random_access>,
-      std::conditional_t<std::is_same_v<Iter_category<Iterator>, std::bidirectional_iterator_tag>, Casting_iterator_core<T, Iterator, Caster, Bi_directional>,
-      Casting_iterator_core<T, Iterator, Caster>>>;
-
-    
-  }
-
-  template<typename T, typename Iterator>
-  using Reinterpret_iterator = iterators_impl::Casting_iterator<T, Iterator, iterators_impl::Reinterpret_cast>;
-
-  template<typename T, typename Iterator>
-  using Static_iterator = iterators_impl::Casting_iterator<T, Iterator, iterators_impl::Static_cast>;
-
-  namespace iterators_impl {
-    template<typename ...Ts>
-    class Soa_reference {
     public:
-
-      using Value = std::tuple<std::reference_wrapper<Ts>...>;
-
-      Soa_reference(Ts&... ts) :
-        holding_{ ts... } {
-
+      template<typename T>
+      To& operator()(T& in) const noexcept {
+        return cast_<To&>(in);
       }
-
-      Soa_reference(Soa_reference const&) = delete;
-      Soa_reference(Soa_reference&&) = delete;
-
-      Soa_reference& operator=(Soa_reference const& other) {
-        for_each_tuples(
-          [](auto& left, auto const& right) { left.get() = right.get(); },
-          holding_, other.holding_);
-
-        return *this;
+      template<typename T>
+      To const& operator()(T const& in) const noexcept {
+        return cast_<To const&>(in);
       }
-
-      Soa_reference& operator=(Value const& other) {
-        for_each_tuples(
-          [](auto& left, auto const& right) { left.get() = right.get(); },
-          holding_, other);
-
-        return *this;
+      template<typename T>
+      To&& operator()(T&& in) const noexcept {
+        return cast_<To&&>(std::forward<T&&>(in));
       }
-
-      Soa_reference& operator=(Soa_reference&& other) {
-        for_each_tuples(
-          [](auto& left, auto&& right) { left.get() = std::move(right.get());},
-          holding_, other.holding_);
-
-        return *this;
-      }
-
-      Soa_reference& operator=(Value&& other) {
-        for_each_tuples(
-          [](auto& left, auto&& right) {left.get() = std::move(right.get()); },
-          holding_, other);
-
-        return *this;
-      }
-
-      void swap(Soa_reference& other) {
-        for_each_tuples(
-          [](auto& left, auto& right) { std::swap(left.get(), right.get());},
-          holding_, other.holding_);
-      }
-    
-      Value const& get_underlying() const noexcept {
-        return holding_;
-      }
-      constexpr operator Value&() noexcept {
-        return holding_;
-      }
-      constexpr operator Value const&() const noexcept {
-        return holding_;
+      template<typename T>
+      To const&& operator()(T const&& in) const noexcept {
+        return cast_<const&&>(std::forward<T const&&>(in));
       }
     private:
-      Value holding_;
+      template<typename To, typename In>
+      To cast_(In&& in) const noexcept {
+        return static_cast<To>(std::forward<In>(in));
+      }
+    };
+
+    template<typename To>
+    struct Reinterpret_cast {
+      template<typename T>
+      To& operator()(T& in) const noexcept {
+        return cast_<To&>(in);
+      }
+      template<typename T>
+      To const& operator()(T const& in) const noexcept {
+        return cast_<To const&>(in);
+      }
+      template<typename T>
+      To&& operator()(T&& in) const noexcept {
+        return cast_<To&&>(std::forward<T&&>(in));
+      }
+      template<typename T>
+      To const&& operator()(T const&& in) const noexcept {
+        return cast_<const&&>(std::forward<T const&&>(in));
+      }
+    private:
+      template<typename To, typename In>
+      To cast_(In&& in) const noexcept {
+        return reinterpret_cast<To>(std::forward<In>(in));
+      }
+    };
+
+    template<typename To>
+    struct Dynamic_cast {
+      template<typename T>
+      To& operator()(T& in) const noexcept {
+        return cast_<To&>(in);
+      }
+      template<typename T>
+      To const& operator()(T const& in) const noexcept {
+        return cast_<To const&>(in);
+      }
+      template<typename T>
+      To&& operator()(T&& in) const noexcept {
+        return cast_<To&&>(std::forward<T&&>(in));
+      }
+      template<typename T>
+      To const&& operator()(T const&& in) const noexcept {
+        return cast_<const&&>(std::forward<T const&&>(in));
+      }
+    private:
+      template<typename To, typename In>
+      To cast_(In&& in) const noexcept {
+        return dynamic_cast<To>(std::forward<In>(in));
+      }
     };
   }
 
-  template<typename First, typename ...Rest>
+  template<typename To, typename Iterator>
+  using Reinterpret_cast_iterator = Converting_iterator<
+    iterators_impl::Reinterpret_cast<To>,
+    Iterator>;
+
+  template<typename To, typename Iterator>
+  using Static_cast_iterator = Converting_iterator<
+    iterators_impl::Static_cast<To>,
+    Iterator>;
+
+  template<typename To, typename Iterator>
+  using Dynamic_cast_iterator = Converting_iterator<
+    iterators_impl::Dynamic_cast<To>,
+    Iterator>;
+
+  template<typename Functor, typename Iterator>
+  Converting_iterator<Functor, Iterator> make_converting_iterator(Functor functor, Iterator iterator) {
+    return { std::move(functor), std::move(iterator) };
+  }
+
+    template<typename First, typename ...Rest>
   class Soa_iterator {
   private:
 
@@ -266,7 +272,7 @@ namespace dlib {
     using pointer = std::tuple<
       Pointer<First>,
       Pointer<Rest>...>;
-    using reference = iterators_impl::Soa_reference<
+    using reference = Soa_reference<
       Value_type<First>,
       Value_type<Rest>...>;
     using iterator_category = std::random_access_iterator_tag;
@@ -357,7 +363,7 @@ namespace dlib {
     bool operator>=(Soa_iterator const& other) const noexcept {
       return std::get<0>(iters_) >= std::get<0>(other.iters_);
     }
-  
+
     std::tuple<First, Rest...> const& get_underlying() const noexcept {
       return iters_;
     }
@@ -388,7 +394,7 @@ namespace dlib {
 
   template<typename ...Iters>
   Soa_iterator<Iters...> make_soa_iterator(Iters... iters) {
-    return {std::move(iters)...};
+    return { std::move(iters)... };
   }
 
   template<typename ...Containers>
@@ -402,39 +408,38 @@ namespace dlib {
   }
 
   namespace iterators_impl {
+    template<typename Iterator>
+    class Range {
+    public:
+      Range(Iterator begin, Iterator end) :
+        begin_{ std::move(begin) },
+        end_{ std::move(end) } {
 
-    template<typename Searching_for>
-    struct Get_checker {
-      template<typename T>
-      using Check = std::is_same<std::decay_t<T>, std::decay_t<Searching_for>>;
-    }; 
-  }
-}
+      }
 
-namespace std {
-  template<typename ...Ts>
-  class tuple_size<::dlib::iterators_impl::Soa_reference<Ts...>> :
-    public ::std::integral_constant<::std::size_t, sizeof...(Ts)> {
+      Iterator begin() const noexcept {
+        return begin_;
+      }
+      Iterator cbegin() const noexcept {
+        return begin_;
+      }
 
-  };
-
-  template<::std::size_t i, typename ...Ts>
-  class tuple_element<i, ::dlib::iterators_impl::Soa_reference<Ts...>> {
-    using type = ::std::tuple_element_t<i, ::std::tuple<Ts...>>;
-  };
-
-  template<::std::size_t i, typename ...Ts>
-  constexpr decltype(auto) get(::dlib::iterators_impl::Soa_reference<Ts...> const& t) noexcept {
-    return std::get<i>(t.get_underlying()).get();
-  }
-
-  template<typename T, typename ...Ts>
-  constexpr decltype(auto) get(::dlib::iterators_impl::Soa_reference<Ts...> const& t) noexcept {
-    return ::dlib::find_if_tuples<::dlib::iterators_impl::Get_checker<T>::template Check>(t);
+      Iterator end() const noexcept {
+        return end_;
+      }
+      Iterator cend() const noexcept {
+        return end_;
+      }
+    private:
+      Iterator begin_;
+      Iterator end_;
+    };
   }
 
-  template<typename ...Ts>
-  void swap(::dlib::iterators_impl::Soa_reference<Ts...>& r1, ::dlib::iterators_impl::Soa_reference<Ts...>& r2) {
-    return r1.swap(r2);
+  template<typename ...Containers>
+  auto make_soa_range(Containers&&... containers) {
+    return iterators_impl::Range{
+      make_soa_iterator(containers.begin()...),
+      make_soa_iterator(containers.end()...) };
   }
 }
