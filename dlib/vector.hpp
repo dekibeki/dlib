@@ -240,6 +240,11 @@ namespace dlib::geometry {
   }
 
   template<typename Distance, size_t n>
+  Vector<Distance, n> normalize(Vector<Distance, n> a) {
+    return scale(a, 1 / length(a));
+  }
+
+  template<typename Distance, size_t n>
   Vector<Distance, n> project(Vector<Distance, n> of, Vector<Distance, n> onto) {
     return scale(of, dot(of, onto) / dot(onto, onto));
   }
