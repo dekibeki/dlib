@@ -72,7 +72,7 @@ namespace dlib {
 
   template<typename Container, typename Functor>
   void for_each_with_index(Container&& container, Functor&& functor) {
-    for_each_with_index(begin(std::forward<Container>(container)), end(std::forward<Container>(container)), std::forward<Functor>(functor));
+    for_each_with_index(container.begin(), container.end(), std::forward<Functor>(functor));
   }
 
   constexpr std::string_view as_string_view(std::string_view sv) noexcept {
