@@ -157,6 +157,11 @@ namespace dlib {
     static constexpr bool t_is_const = std::is_const_v<T>;
     using Unconst_t = std::remove_const_t<T>;
 
+    constexpr Array_view(value_type& single) noexcept :
+      Basic_array_view{ &single,1 } {
+
+    }
+
     template<size_t n, typename = std::enable_if_t<t_is_const>>
     constexpr Array_view(Unconst_t(&data)[n]) noexcept :
       Basic_array_view{ +data, n } {
