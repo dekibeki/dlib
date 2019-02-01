@@ -27,7 +27,7 @@ set(dlibSources
   ${dlibSrc}/outcome.cpp
   ${dlibSrc}/outcome_orig.cpp
   ${dlibSrc}/pool.cpp
-  ${dlibSrc}/quartenion.cpp
+  ${dlibSrc}/quaternion.cpp
   ${dlibSrc}/raft.cpp
   ${dlibSrc}/serialization.cpp
   ${dlibSrc}/soa.cpp
@@ -48,7 +48,7 @@ set(dlibTests
   ${dlibTest}/test_finder_interface.cpp
   ${dlibTest}/test_iterators.cpp
   ${dlibTest}/test_pool.cpp
-  ${dlibTest}/test_quartenion.cpp
+  ${dlibTest}/test_quaternion.cpp
   ${dlibTest}/test_serialization.cpp
   ${dlibTest}/test_soa.cpp
   ${dlibTest}/test_strong_type.cpp

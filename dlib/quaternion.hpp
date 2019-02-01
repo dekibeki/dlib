@@ -6,13 +6,13 @@
 
 namespace dlib {
   template<typename Distance>
-  class Quartenion {
+  class Quaternion {
   public:
-    constexpr Quartenion() noexcept :
+    constexpr Quaternion() noexcept :
       components_{ 0,0,0,0 } {
 
     }
-    constexpr Quartenion(Vector<Distance, 3> const& vec) noexcept :
+    constexpr Quaternion(Vector<Distance, 3> const& vec) noexcept :
       components_{ 0, vec[0], vec[1], vec[2] } {
 
     }
@@ -44,34 +44,34 @@ namespace dlib {
       return components_.cend();
     }
 
-    Quartenion& operator+=(Quartenion const& other) noexcept {
+    Quaternion& operator+=(Quaternion const& other) noexcept {
       for (auto&[our_component, their_component] : make_soa_range(*this, other)) {
         our_component += their_component;
       }
       return *this;
     }
-    Quartenion operator+(Quartenion const& other) const noexcept {
-      Quartenion returning{ *this };
+    Quaternion operator+(Quaternion const& other) const noexcept {
+      Quaternion returning{ *this };
       returning += other;
       return returning;
     }
-    Quartenion& operator-=(Quartenion const& other) noexcept {
+    Quaternion& operator-=(Quaternion const& other) noexcept {
       for (auto&[our_component, their_component] : make_soa_range(*this, other)) {
         our_component -= their_component;
       }
       return *this;
     }
-    Quartenion operator-(Quartenion const& other) const noexcept {
-      Quartenion returning{ *this };
+    Quaternion operator-(Quaternion const& other) const noexcept {
+      Quaternion returning{ *this };
       returning += other;
       return returning;
     }
-    Quartenion& operator*=(Quartenion const& other) noexcept {
+    Quaternion& operator*=(Quaternion const& other) noexcept {
       *this = operator*(other);
       return *this;
     }
-    Quartenion operator*(Quartenion const& other) const noexcept {
-      Quartenion ret;
+    Quaternion operator*(Quaternion const& other) const noexcept {
+      Quaternion ret;
 
       std::array<Distance, 4> const& us = components_;
 
@@ -82,11 +82,11 @@ namespace dlib {
 
       return ret;
     }
-    Quartenion& operator/=(Quartenion const& other) noexcept {
+    Quaternion& operator/=(Quaternion const& other) noexcept {
       *this = operator/(other);
       return *this;
     }
-    Quartenion operator/(Quartenion const& other) const noexcept;
+    Quaternion operator/(Quaternion const& other) const noexcept;
   
     constexpr Distance scalar() const noexcept {
       return components_[0];
@@ -99,8 +99,8 @@ namespace dlib {
   };
 
   template<typename Distance, typename Angle>
-  constexpr Quartenion<Distance> make_rotation(Vector<Distance, 3> axis, Angle theta) noexcept {
-    Quartenion<Distance> returning;
+  constexpr Quaternion<Distance> make_rotation(Vector<Distance, 3> axis, Angle theta) noexcept {
+    Quaternion<Distance> returning;
 
     const Distance sin_coeff = sin(theta / 2);
 
@@ -113,15 +113,15 @@ namespace dlib {
   }
 
   template<typename Distance, typename Scalar>
-  constexpr Quartenion<Distance> scale(Quartenion<Distance> a, Scalar scalar) {
-    Quartenion<Distance> returning;
+  constexpr Quaternion<Distance> scale(Quaternion<Distance> a, Scalar scalar) {
+    Quaternion<Distance> returning;
     for (auto&[a_compoment, returning_component] : make_soa_range(a, returning)) {
       returning_component = static_cast<Distance>(a_component * scalar);
     }
   }
 
   template<typename Distance>
-  constexpr Distance length_squared(Quartenion<Distance> a) noexcept {
+  constexpr Distance length_squared(Quaternion<Distance> a) noexcept {
     Distance result{ 0 };
     for (Distance& component : a) {
       result += component * component;
@@ -130,18 +130,18 @@ namespace dlib {
   }
 
   template<typename Distance>
-  constexpr Distance length(Quartenion<Distance> a) noexcept {
+  constexpr Distance length(Quaternion<Distance> a) noexcept {
     return std::sqrt(length_squared(std::move(a)));
   }
 
   template<typename Distance>
-  constexpr Quartenion<Distance> normalize(Quartenion<Distance> a) noexcept {
+  constexpr Quaternion<Distance> normalize(Quaternion<Distance> a) noexcept {
     return scale(a, 1.0 / length(a));
   }
 
   template<typename Distance>
-  constexpr Quartenion<Distance> inverse(Quartenion<Distance> a) noexcept {
-    Quartenion<Distance> returning;
+  constexpr Quaternion<Distance> inverse(Quaternion<Distance> a) noexcept {
+    Quaternion<Distance> returning;
 
     const Distance length = ::dlib::length(a);
 
@@ -154,8 +154,8 @@ namespace dlib {
   }
   
   template<typename Distance>
-  constexpr Vector<Distance, 3> rotate(Vector<Distance, 3> vec, Quartenion<Distance> rotation) noexcept {
-    return (rotation * Quartenion<Distance>{ vec } * inverse(rotation)).vector();
+  constexpr Vector<Distance, 3> rotate(Vector<Distance, 3> vec, Quaternion<Distance> rotation) noexcept {
+    return (rotation * Quaternion<Distance>{ vec } * inverse(rotation)).vector();
   }
 
   template<typename Distance, typename Angle>
@@ -164,7 +164,7 @@ namespace dlib {
   }
 
   template<typename Distance>
-  Quartenion<Distance> Quartenion<Distance>::operator/(Quartenion const& other) const noexcept {
+  Quaternion<Distance> Quaternion<Distance>::operator/(Quaternion const& other) const noexcept {
     return operator*(inverse(other));
   }
 }
