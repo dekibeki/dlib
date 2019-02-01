@@ -1,14 +1,14 @@
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 
-#include <dlib/quartenion.hpp>
+#include <dlib/quaternion.hpp>
 #include <dlib/math.hpp>
 
 namespace {
 
   using Distance = double;
   using Vector = dlib::Vector<Distance, 3>;
-  using Quartenion = dlib::Quartenion<Distance>;
+  using Quaternion = dlib::Quaternion<Distance>;
 
   const Vector forwards = Vector{ 1,0,0 };
   const Vector up = Vector{ 0,1,0 };
@@ -20,9 +20,9 @@ namespace {
       && std::abs(v1[2] - v2[2]) < std::numeric_limits<Distance>::epsilon();
   }
 }
-BOOST_AUTO_TEST_CASE(quartenion_rotation) {
+BOOST_AUTO_TEST_CASE(quaternion_rotation) {
   {
-    Quartenion rotation = dlib::make_rotation(forwards, dlib::pi);
+    Quaternion rotation = dlib::make_rotation(forwards, dlib::pi);
     {
       Vector rotated = dlib::rotate(forwards, rotation);
       BOOST_TEST((equal(rotated, forwards)));
@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE(quartenion_rotation) {
     }
   }
   {
-    Quartenion rotation = dlib::make_rotation(up, dlib::pi);
+    Quaternion rotation = dlib::make_rotation(up, dlib::pi);
     {
       Vector rotated = dlib::rotate(forwards, rotation);
       BOOST_TEST((equal(rotated, -forwards)));
@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(quartenion_rotation) {
     }
   }
   {
-    Quartenion rotation = dlib::make_rotation(left, dlib::pi);
+    Quaternion rotation = dlib::make_rotation(left, dlib::pi);
     {
       Vector rotated = dlib::rotate(forwards, rotation);
       BOOST_TEST((equal(rotated, -forwards)));
