@@ -14,43 +14,45 @@ find_package(Boost
   COMPONENTS unit_test_framework)
 
 set(dlibSources
-  ${dlibSrc}/raft.cpp
-  ${dlibSrc}/strong_type.cpp
   ${dlibSrc}/args.cpp
-  ${dlibSrc}/db.cpp
-  ${dlibSrc}/math.cpp
-  ${dlibSrc}/util.cpp
+  ${dlibSrc}/arrays.cpp
   ${dlibSrc}/cache.cpp
-  ${dlibSrc}/pool.cpp
-  ${dlibSrc}/iterators.cpp
-  ${dlibSrc}/outcome.cpp
-  ${dlibSrc}/outcome_orig.cpp
-  ${dlibSrc}/meta.cpp
-  ${dlibSrc}/unique_value.cpp
+  ${dlibSrc}/db.cpp
+  ${dlibSrc}/finder_interface.cpp
   ${dlibSrc}/interface.cpp
   ${dlibSrc}/interface_function.cpp
-  ${dlibSrc}/arrays.cpp
-  ${dlibSrc}/finder_interface.cpp
-  ${dlibSrc}/stmt.cpp
+  ${dlibSrc}/iterators.cpp
+  ${dlibSrc}/meta.cpp
+  ${dlibSrc}/math.cpp
+  ${dlibSrc}/outcome.cpp
+  ${dlibSrc}/outcome_orig.cpp
+  ${dlibSrc}/pool.cpp
+  ${dlibSrc}/quartenion.cpp
+  ${dlibSrc}/raft.cpp
   ${dlibSrc}/serialization.cpp
   ${dlibSrc}/soa.cpp
   ${dlibSrc}/soa_reference.cpp
+  ${dlibSrc}/strong_type.cpp
+  ${dlibSrc}/stmt.cpp
+  ${dlibSrc}/unique_value.cpp
+  ${dlibSrc}/util.cpp
   ${dlibSrc}/vector.cpp
   ${dlibSrc}/vector_adaptors.cpp
 )
 
 set(dlibTests
   ${dlibTest}/testMain.cpp
-  ${dlibTest}/test_db.cpp
+  ${dlibTest}/test_arrays.cpp
   ${dlibTest}/test_cache.cpp
-  ${dlibTest}/test_pool.cpp
+  ${dlibTest}/test_db.cpp
   ${dlibTest}/test_finder_interface.cpp
   ${dlibTest}/test_iterators.cpp
+  ${dlibTest}/test_pool.cpp
+  ${dlibTest}/test_quartenion.cpp
   ${dlibTest}/test_serialization.cpp
-  ${dlibTest}/test_arrays.cpp
-  ${dlibTest}/test_vector_adaptors.cpp
   ${dlibTest}/test_soa.cpp
   ${dlibTest}/test_strong_type.cpp
+  ${dlibTest}/test_vector_adaptors.cpp
   )
 
 add_library(dlib ${dlibSources})

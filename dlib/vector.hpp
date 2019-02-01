@@ -8,7 +8,7 @@
 #include <dlib/util.hpp>
 #include <dlib/serialization.hpp>
 
-namespace dlib::geometry {
+namespace dlib {
   template<typename Distance, size_t n>
   class Vector {
   public:
@@ -21,10 +21,10 @@ namespace dlib::geometry {
     Vector(Vector const&) = default;
     Vector(Vector&&) = default;
 
-    constexpr Vector(std::initializer_list<Distance> in) {
-      const size_t min = vmin(in.size(), data_.size());
-
-      std::copy_n(in.begin(), min, data_.begin());
+    template<typename ...Rest>
+    constexpr Vector(Distance first, Rest... rest) noexcept :
+      data_{ first, static_cast<Distance>(rest)... } {
+      
     }
 
     constexpr Vector& operator=(Vector const&) = default;
@@ -209,7 +209,7 @@ namespace dlib::geometry {
   }
 
   template<typename Distance, size_t n>
-  Distance lengthSquared(Vector<Distance, n> a) {
+  Distance length_squared(Vector<Distance, n> a) {
     Distance returning = 0;
     for (size_t i = 0; i < n; ++i) {
       returning += a[i] * a[i];
@@ -220,11 +220,11 @@ namespace dlib::geometry {
 
   template<typename Distance, size_t n>
   Distance length(Vector<Distance, n> a) {
-    return std::sqrt(lengthSquared(a));
+    return std::sqrt(length_squared(a));
   }
 
   template<typename Distance, size_t n>
-  Distance dotScaled(Vector<Distance, n> a, Vector<Distance, n> b) {
+  Distance dot_scaled(Vector<Distance, n> a, Vector<Distance, n> b) {
     Distance returning = 0;
 
     for (size_t i = 0; i < n; ++i) {
@@ -236,7 +236,7 @@ namespace dlib::geometry {
 
   template<typename Distance, size_t n>
   Distance dot(Vector<Distance, n> a, Vector<Distance, n> b) {
-    return dotScaled(a, b) / length(b);
+    return dot_scaled(a, b) / length(b);
   }
 
   template<typename Distance, size_t n>
@@ -304,7 +304,7 @@ namespace dlib::geometry {
 
 namespace dlib::serialization {
   template<typename Distance, size_t n, typename OutputIterator>
-  OutputIterator serialize(OutputIterator iter, geometry::Vector<Distance, n> const& vector) noexcept {
+  OutputIterator serialize(OutputIterator iter, Vector<Distance, n> const& vector) noexcept {
     for (size_t i = 0; i < n; ++i) {
       iter = serialize(std::move(iter), vector[i]);
     }
@@ -312,14 +312,14 @@ namespace dlib::serialization {
   }
 
   template<typename Distance, size_t width, size_t height, typename OutputIterator>
-  OutputIterator serialize(OutputIterator iter, geometry::RowMajorMatrix<Distance, width, height> const& matrix) {
+  OutputIterator serialize(OutputIterator iter, RowMajorMatrix<Distance, width, height> const& matrix) {
     using Matrix = geometry::RowMajorMatrix<Distance, width, height>;
     constexpr auto major_size = Matrix::major_size();
     constexpr auto minor_size = Matrix::minor_size();
 
     for (size_t major = 0; major < major_size; ++major) {
       for (size_t minor = 0; minor < minor_size; ++minor) {
-        auto writing = matrix.get(geometry::Major{ major }, geometry::Minor{ minor });
+        auto writing = matrix.get(Major{ major }, Minor{ minor });
         iter = serialize(std::move(iter), std::move(writing));
       }
     }
@@ -327,8 +327,8 @@ namespace dlib::serialization {
   }
 
   template<typename Distance, size_t width, size_t height, typename OutputIterator>
-  OutputIterator serialize(OutputIterator iter, geometry::ColumnMajorMatrix<Distance, width, height> const& matrix) {
-    using Matrix = geometry::ColumnMajorMatrix<Distance, width, height>;
+  OutputIterator serialize(OutputIterator iter, ColumnMajorMatrix<Distance, width, height> const& matrix) {
+    using Matrix = ColumnMajorMatrix<Distance, width, height>;
     constexpr auto major_size = Matrix::major_size();
     constexpr auto minor_size = Matrix::minor_size();
 
@@ -342,14 +342,14 @@ namespace dlib::serialization {
   }
 
   template<typename Distance, size_t n, typename InputIterator, typename EndIterator>
-  Result<Deserialization<geometry::Vector<Distance, n>, InputIterator>> deserialize(Type_arg<geometry::Vector<Distance, n>>, InputIterator iter, EndIterator end) noexcept {
-    return deserialize_aggregate<n, geometry::Vector<Distance, n>, Distance>(std::move(iter), std::move(end));
+  Result<Deserialization<Vector<Distance, n>, InputIterator>> deserialize(Type_arg<Vector<Distance, n>>, InputIterator iter, EndIterator end) noexcept {
+    return deserialize_aggregate<n, Vector<Distance, n>, Distance>(std::move(iter), std::move(end));
   }
 
   template<typename Distance, size_t width, size_t height, typename InputIterator, typename EndIterator>
-  Result<Deserialization<geometry::RowMajorMatrix<Distance, width, height>, InputIterator>> deserialize(Type_arg<geometry::RowMajorMatrix<Distance, width, height>>, InputIterator iter, EndIterator end) noexcept {
+  Result<Deserialization<RowMajorMatrix<Distance, width, height>, InputIterator>> deserialize(Type_arg<RowMajorMatrix<Distance, width, height>>, InputIterator iter, EndIterator end) noexcept {
 
-    using Matrix = geometry::RowMajorMatrix<Distance, width, height>;
+    using Matrix = RowMajorMatrix<Distance, width, height>;
     constexpr auto major_size = Matrix::major_size();
     constexpr auto minor_size = Matrix::minor_size();
 
@@ -359,16 +359,16 @@ namespace dlib::serialization {
       for (size_t minor = 0; minor < minor_size; ++minor) {
         OUTCOME_TRY(read, (deserialize(type_arg<Distance>, std::move(iter), end)));
         iter = std::move(read.iter);
-        matrix.get(geometry::Major{ major }, geometry::Minor{ minor }) = std::move(read.val);
+        matrix.get(Major{ major }, Minor{ minor }) = std::move(read.val);
       }
     }
     return Deserialization<Matrix, InputIterator>{std::move(matrix), std::move(iter)};
   }
 
   template<typename Distance, size_t width, size_t height, typename InputIterator, typename EndIterator>
-  Result<Deserialization<geometry::ColumnMajorMatrix<Distance, width, height>, InputIterator>> deserialize(Type_arg<geometry::ColumnMajorMatrix<Distance, width, height>>, InputIterator iter, EndIterator end) noexcept {
+  Result<Deserialization<ColumnMajorMatrix<Distance, width, height>, InputIterator>> deserialize(Type_arg<ColumnMajorMatrix<Distance, width, height>>, InputIterator iter, EndIterator end) noexcept {
 
-    using Matrix = geometry::ColumnMajorMatrix<Distance, width, height>;
+    using Matrix = ColumnMajorMatrix<Distance, width, height>;
     constexpr auto major_size = Matrix::major_size();
     constexpr auto minor_size = Matrix::minor_size();
 
@@ -378,7 +378,7 @@ namespace dlib::serialization {
       for (size_t minor = 0; minor < minor_size; ++minor) {
         OUTCOME_TRY(read, (deserialize(type_arg<Distance>, std::move(iter), end)));
         iter = std::move(read.iter);
-        matrix.get(geometry::Major{ major }, geometry::Minor{ minor }) = std::move(read.val);
+        matrix.get(Major{ major }, Minor{ minor }) = std::move(read.val);
       }
     }
     return Deserialization<Matrix, InputIterator>{std::move(matrix), std::move(iter)};
