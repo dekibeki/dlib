@@ -20,7 +20,6 @@ set(dlibSources
   ${dlibSrc}/db.cpp
   ${dlibSrc}/finder_interface.cpp
   ${dlibSrc}/interface.cpp
-  ${dlibSrc}/interface_function.cpp
   ${dlibSrc}/iterators.cpp
   ${dlibSrc}/meta.cpp
   ${dlibSrc}/math.cpp
@@ -46,6 +45,7 @@ set(dlibTests
   ${dlibTest}/test_cache.cpp
   ${dlibTest}/test_db.cpp
   ${dlibTest}/test_finder_interface.cpp
+  ${dlibTest}/test_interface.cpp
   ${dlibTest}/test_iterators.cpp
   ${dlibTest}/test_pool.cpp
   ${dlibTest}/test_quaternion.cpp

@@ -6,7 +6,6 @@
 #include <optional>
 #include <dlib/arrays.hpp>
 #include <dlib/args.hpp>
-#include <dlib/concurrency.hpp>
 #include <dlib/cache.hpp>
 #include <dlib/outcome.hpp>
 #include <dlib/util.hpp>
@@ -39,9 +38,9 @@ namespace dlib {
     template<typename Impl>
     using Driver_impl = typename Impl::Driver;
 
-    template<typename Driver, typename T>
-    Result<void> open(Driver&& driver, T&& location) noexcept {
-      return driver.open(std::forward<T>(location));
+    template<typename Driver>
+    Result<void> open(Driver&& driver, std::string_view location) noexcept {
+      return driver.open(location);
     }
 
     template<typename Impl>
@@ -60,9 +59,9 @@ namespace dlib {
     }
 
     /* Returns Result<Stmt> */
-    template<typename Impl, typename T>
-    Result<Stmt_impl<Impl>> prepare(Driver_impl<Impl>& driver, T&& sql) noexcept {
-      return Impl::prepare(driver, std::forward<T>(sql));
+    template<typename Impl>
+    Result<Stmt_impl<Impl>> prepare(Driver_impl<Impl>& driver, std::string_view sql) noexcept {
+      return Impl::prepare(driver, sql);
     }
 
     template<typename Impl>
@@ -161,10 +160,10 @@ namespace dlib {
 
     using Query_finder = Finder_interface<std::string_view, std::string>;
 
-    template<typename ...Columns, typename Name, typename ...Args, typename Callback>
-    Result<void> execute(Name&& name, Callback&& callback, Args const&... args) {
+    template<typename ...Columns, typename ...Args, typename Callback>
+    Result<void> execute(std::string_view name, Callback&& callback, Args const&... args) {
       static_assert(std::is_invocable_v<Callback, Columns...>);
-      OUTCOME_TRY(pooled, (get_stmt_(std::forward<Name>(name))));
+      OUTCOME_TRY(pooled, (get_stmt_(name)));
       return db_impl::execute_<Impl, Columns...>(driver(), *pooled, std::forward<Callback>(callback), args...);
     }
 
@@ -192,7 +191,7 @@ namespace dlib {
       return driver_;
     }
 
-    static Result<Db_ex> make(std::string const& location, Query_finder queries) {
+    static Result<Db_ex> make(std::string_view location, Query_finder queries) {
       OUTCOME_TRY(driver, (Impl::open(location)));
       return Db_ex(std::move(driver), std::move(queries));
     }
@@ -204,31 +203,30 @@ namespace dlib {
 
     }
 
-    template<typename Name>
-    Result<Stmt*> get_stmt_(Name&& name) noexcept {
-
-      Result<std::string> query{ queries_.get(as_string_view(name)) };
+    Result<Stmt*> get_stmt_(std::string_view name) noexcept {
+      auto query_optional{ queries_.get(name) };
       auto found = stmts_.find(as_string_view(name), std::hash<std::string_view>(), std::equal_to<>());
 
-      if (!query) {
+      if (!query_optional.has_value()) {
         /* If the query no longer exists in the cache, the stmt shouldn't exist either.
          We then try to finalize and remove it */
         if (found != stmts_.end()) {
           OUTCOME_TRY((db_impl::finalize<Impl>(driver_, found->second.stmt)));
           stmts_.erase(found);
         }
-        return query.as_failure();
+        return std::errc::result_out_of_range;
       } else {
+        std::string& query = query_optional.value();
         if (found == stmts_.end()) {
           /*If it doesn't exist yet, make it*/
-          OUTCOME_TRY(new_stmt_impl, (db_impl::prepare<Impl>(driver_, query.value())));
-          Stmt_holder new_stmt{ std::move(new_stmt_impl), std::move(query.value()) };
-          found = stmts_.emplace(std::forward<Name>(name), std::move(new_stmt)).first;
-        } else if (found->second.query != query.value()) {
+          OUTCOME_TRY(new_stmt_impl, (db_impl::prepare<Impl>(driver_, query)));
+          Stmt_holder new_stmt{ std::move(new_stmt_impl), std::move(query) };
+          found = stmts_.emplace(name, std::move(new_stmt)).first;
+        } else if (found->second.query != query) {
           /*If we're stale, finalize the old, prepare the new*/
           OUTCOME_TRY((db_impl::finalize<Impl>(driver_, found->second.stmt)));
-          OUTCOME_TRY(new_stmt_impl, (db_impl::prepare<Impl>(driver_, query.value())));
-          found->second.query = std::move(query.value());
+          OUTCOME_TRY(new_stmt_impl, (db_impl::prepare<Impl>(driver_, query)));
+          found->second.query = std::move(query);
           found->second.stmt = std::move(new_stmt_impl);
         }
         return &found->second.stmt;

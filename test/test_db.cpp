@@ -16,7 +16,7 @@ namespace {
       
     };
 
-    static dlib::Result<Stmt> prepare(Driver&, std::string sql) noexcept {
+    static dlib::Result<Stmt> prepare(Driver&, std::string_view sql) noexcept {
       return Stmt{};
     }
     static dlib::Result<void> reset(Driver&, Stmt& stmt) noexcept {
@@ -45,7 +45,7 @@ namespace {
       return T();
     }
 
-    static dlib::Result<Driver> open(std::string const& location) noexcept {
+    static dlib::Result<Driver> open(std::string_view location) noexcept {
       return Driver();
     }
 
@@ -61,9 +61,13 @@ namespace dlib {
   struct Finder_default_get<My_cache> {
     using Me = My_cache;
 
-    Result<std::string> operator()(Me* ptr, std::string_view key) noexcept {
-      OUTCOME_TRY(value, (ptr->read(key)));
-      return *value;
+    std::optional<std::string> operator()(Me* ptr, std::string_view key) noexcept {
+      auto read = ptr->read(key);
+      if (read.has_value()) {
+        return *read.value();
+      } else {
+        return std::nullopt;
+      }
     }
   };
 
@@ -71,7 +75,7 @@ namespace dlib {
   struct Finder_default_contains<My_cache> {
     using Me = My_cache;
 
-    auto operator()(Me* ptr, std::string_view key) noexcept {
+    bool operator()(Me* ptr, std::string_view key) noexcept {
       return ptr->read(key).has_value();
     }
   };

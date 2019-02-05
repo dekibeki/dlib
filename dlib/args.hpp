@@ -4,7 +4,7 @@
 #include <dlib/meta.hpp>
 
 namespace dlib {
-  namespace arg_impl {
+  namespace args_impl {
     template<template<typename> typename Target, typename Default, typename ...Options>
     struct GetImpl;
 
@@ -76,15 +76,20 @@ namespace dlib {
   struct Arg {
     template<typename T>
     struct Holder {
+      Holder(T val_) :
+        val{ std::move(val_) } {
+
+      }
+      using Type = T;
       T val;
     };
   };
 
   template<typename Type, typename ...Options>
-  constexpr bool contains_arg = (false || ... || arg_impl::is_get<Type, Options>);
+  constexpr bool contains_arg = (false || ... || args_impl::is_get<Type, Options>);
 
   template<template<typename> typename Type, typename ...Options>
-  constexpr bool contains_varg = (false || ... || arg_impl::is_vget<Type, Options>);
+  constexpr bool contains_varg = (false || ... || args_impl::is_vget<Type, Options>);
 
   template<typename Type, typename Fallback, typename ...Options>
   constexpr decltype(auto) get_arg_defaulted(Fallback&& fallback, Options&&... options) {
@@ -111,7 +116,7 @@ namespace dlib {
     static_assert(contains_arg<Type,Options...>,
       "The type we are looking for ('Type') was not found in Options...");
     if constexpr(contains_arg<Type, Options...>) { //to make error messages a bit cleaner
-      return arg_impl::get<Type>(std::forward<Options>(options)...);
+      return args_impl::get<Type>(std::forward<Options>(options)...);
     }
   }
 
@@ -120,7 +125,7 @@ namespace dlib {
     static_assert(contains_varg<Type, Options...>,
       "The type we are looking for ('Type') was not found in Options...");
     if constexpr (contains_varg<Type, Options...>) { //to make error messages a bit cleaner
-      return arg_impl::vget<Type>(std::forward<Options>(options)...);
+      return args_impl::vget<Type>(std::forward<Options>(options)...);
     }
   }
 
@@ -142,9 +147,9 @@ namespace dlib {
   */
 
   template<template<typename> typename Target, typename Default, typename ...Options>
-  using Get_arg_defaulted = typename arg_impl::GetImpl<Target, Default, Options...>::type;
+  using Get_arg_defaulted = typename args_impl::GetImpl<Target, Default, Options...>::type;
 
   template<template<typename> typename Target, typename ...Options>
-  using Get_arg = ::std::enable_if_t<arg_impl::GetImpl<Target, void, Options...>::found,
-    typename arg_impl::GetImpl<Target, void, Options...>::type>;
+  using Get_arg = ::std::enable_if_t<args_impl::GetImpl<Target, void, Options...>::found,
+    typename args_impl::GetImpl<Target, void, Options...>::type>;
 }

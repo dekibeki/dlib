@@ -162,7 +162,7 @@ namespace dlib {
         for (auto& updater : sources_) {
           auto updated{ updater.get(key) };
           if (updated) {
-            return std::move(updated);
+            return std::move(updated.value());
           }
         }
         return std::errc::bad_address;

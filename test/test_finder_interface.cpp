@@ -33,9 +33,19 @@ namespace dlib {
 BOOST_AUTO_TEST_CASE(finder_interface_custom_defaults) {
   dlib::Finder_interface<int, int> test{ Defaulted_dummy{} };
   test.get(1);
-  test.contains(2);
+  BOOST_TEST((test.contains(2) == true));
 }
 
+BOOST_AUTO_TEST_CASE(finder_interface_custom_defaults_overriden) {
+  struct Override_get {
+    int operator()(Defaulted_dummy* ptr, int i) const noexcept {
+      return 0;
+    }
+  };
+
+  dlib::Finder_interface<int, int> test{ Defaulted_dummy{}, dlib::finder_get(Override_get{}) };
+}
+/*
 BOOST_AUTO_TEST_CASE(finder_interface_defaults) {
   struct Dummy {
     int get(int const& i) noexcept {
@@ -71,7 +81,7 @@ BOOST_AUTO_TEST_CASE(finder_interface_custom) {
     }
   };
 
-  Interface test{ Dummy{}, dlib::Finder_contains{Shitty_lambda{}} };
+  Interface test{ Dummy{}, dlib::finder_contains(Shitty_lambda{}) };
   test.get(0);
   test.contains(0);
-}
+}*/
