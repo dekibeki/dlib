@@ -7,6 +7,7 @@
 #include <vector>
 #include <dlib/vector_adaptors.hpp>
 #include <dlib/util.hpp>
+#include <dlib/arrays.hpp>
 
 #include <dlib/iterators.hpp>
 
@@ -111,6 +112,20 @@ namespace dlib {
           for_each_tuples(
             [](auto& vec, auto const& start, auto const& end) { return vec.erase(stat, end);},
             holding_, start.get_underlying(), end.get_underlying()));
+      }
+
+      template<typename T>
+      constexpr Array_view<T> view() noexcept {
+        auto& vec = std::get<Vector_impl<T>>(holding_);
+
+        return { vec.data(), vec.size() };
+      }
+
+      template<typename T>
+      constexpr Array_view<const T> view() const noexcept {
+        auto const& vec = std::get<Vector_impl<T>>(holding_);
+
+        return { vec.data(), vec.size() };
       }
 
       void move_element(iterator iter, Soa_impl& to) noexcept {

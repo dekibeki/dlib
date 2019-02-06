@@ -65,3 +65,22 @@ BOOST_AUTO_TEST_CASE(strong_type_increment) {
   ++sv;
   Sv* test = &sv;
 }
+
+BOOST_AUTO_TEST_CASE(strong_type_const_ref_equals) {
+  struct Sv :
+    public strong_type::Strong_type<int, strong_type::Construct<int>,
+    strong_type::Equal::Self> {
+    using Strong_type::Strong_type;
+    using Strong_type::operator=;
+  };
+
+  Sv sv{ 1 };
+
+  BOOST_TEST((sv == sv));
+
+  Sv const& sv_cr = sv;
+
+  BOOST_TEST((sv_cr == sv_cr));
+  BOOST_TEST((sv == sv_cr));
+  BOOST_TEST((sv_cr == sv));
+}
