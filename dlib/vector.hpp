@@ -12,6 +12,14 @@ namespace dlib {
   template<typename Distance, size_t n>
   class Vector {
   public:
+    using Backing = std::array<Distance, n>;
+
+    using value_type = Distance;
+    using reference = value_type & ;
+    using pointer = value_type * ;
+    using iterator = typename Backing::iterator;
+    using const_iterator = typename Backing::const_iterator;
+
     template<typename = std::enable_if_t<std::is_default_constructible_v<Distance>>>
     constexpr Vector() noexcept :
       data_{ 0 } {
@@ -85,8 +93,28 @@ namespace dlib {
     constexpr Distance const& operator[](size_t i) const noexcept {
       return data_[i];
     }
+  
+    constexpr iterator begin() noexcept {
+      return data_.begin();
+    }
+    constexpr const_iterator begin() const noexcept {
+      return data_.begin();
+    }
+    constexpr const_iterator cbegin() const noexcept {
+      return data_.cbegin();
+    }
+
+    constexpr iterator end() noexcept {
+      return data_.end();
+    }
+    constexpr const_iterator end() const noexcept {
+      return data_.end();
+    }
+    constexpr const_iterator cend() const noexcept {
+      return data_.cend();
+    }
   private:
-    std::array<Distance, n> data_;
+    Backing data_;
   };
 
   template<typename Cmp = std::less<>>
