@@ -63,7 +63,7 @@ namespace dlib {
 
     std::optional<std::string> operator()(Me* ptr, std::string_view key) noexcept {
       auto read = ptr->read(key);
-      if (read.has_value()) {
+      if (read.success()) {
         return *read.value();
       } else {
         return std::nullopt;
@@ -76,7 +76,7 @@ namespace dlib {
     using Me = My_cache;
 
     bool operator()(Me* ptr, std::string_view key) noexcept {
-      return ptr->read(key).has_value();
+      return ptr->read(key).success();
     }
   };
 }

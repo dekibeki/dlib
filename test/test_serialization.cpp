@@ -54,7 +54,7 @@ namespace {
 namespace dlib::serialization {
   template<typename InputIterator, typename EndIterator>
   dlib::Result<Deserialization<NonDefaultConstructable, InputIterator>> deserialize(InputIterator begin, EndIterator end, dlib::Type_arg<NonDefaultConstructable>) {
-    OUTCOME_TRY(byte, (deserialize<std::byte>(std::move(begin), end)));
+    DLIB_TRY(byte, (deserialize<std::byte>(std::move(begin), end)));
     return dlib::Deserialization<NonDefaultConstructable, InputIterator>{ { byte.val }, std::move(byte.iter)};
   }
 }

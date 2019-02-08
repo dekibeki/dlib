@@ -24,7 +24,6 @@ set(dlibSources
   ${dlibSrc}/meta.cpp
   ${dlibSrc}/math.cpp
   ${dlibSrc}/outcome.cpp
-  ${dlibSrc}/outcome_orig.cpp
   ${dlibSrc}/pool.cpp
   ${dlibSrc}/quaternion.cpp
   ${dlibSrc}/raft.cpp
@@ -70,6 +69,9 @@ target_include_directories(dlibTest PUBLIC
 
 target_compile_features(dlib PUBLIC cxx_std_17)
 target_compile_features(dlibTest PUBLIC cxx_std_17)
+
+target_link_libraries(dlib
+  )
 
 target_link_libraries(dlibTest 
   dlib

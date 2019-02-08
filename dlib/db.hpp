@@ -102,7 +102,7 @@ namespace dlib {
       if constexpr (i == std::tuple_size_v<Tuple>) {
         return success();
       } else {
-        OUTCOME_TRY(col_data, (get_column<Impl>(driver, stmt, i, column_type<std::tuple_element_t<i, Tuple>>)));
+        DLIB_TRY(col_data, (get_column<Impl>(driver, stmt, i, column_type<std::tuple_element_t<i, Tuple>>)));
         std::get<i>(tuple) = std::move(col_data);
         return get_columns_<Impl, i + 1>(driver, stmt, tuple);
       }
@@ -115,7 +115,7 @@ namespace dlib {
 
     template<typename Impl, int i = 0, typename First, typename ...Rest>
     Result<void> bind_args_(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt, First const& first, Rest const&... rest) {
-      OUTCOME_TRY((bind<Impl>(driver, stmt, i, first)));
+      DLIB_TRY((bind<Impl>(driver, stmt, i, first)));
       return bind_args_<Impl, i + 1>(driver, stmt, rest...);
     }
 
@@ -123,16 +123,16 @@ namespace dlib {
     Result<void> execute_(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt, Callback&& callback, Args&&... args) noexcept {
       using Tuple = std::tuple<Columns...>;
       Tuple columns;
-      OUTCOME_TRY((reset<Impl>(driver, stmt)));
-      OUTCOME_TRY((bind_args_<Impl>(driver, stmt, std::forward<Args>(args)...)));
+      DLIB_TRY((reset<Impl>(driver, stmt)));
+      DLIB_TRY((bind_args_<Impl>(driver, stmt, std::forward<Args>(args)...)));
       for (;;) {
-        OUTCOME_TRY(step_res, step<Impl>(driver, stmt));
+        DLIB_TRY(step_res, step<Impl>(driver, stmt));
         switch (step_res) {
         case Stmt_step::Data:
         {
-          OUTCOME_TRY((get_columns_<Impl>(driver, stmt, columns)));
+          DLIB_TRY((get_columns_<Impl>(driver, stmt, columns)));
           if constexpr (is_result<decltype(std::apply(callback, std::move(columns)))>) {
-            OUTCOME_TRY((std::apply(callback, std::move(columns))));
+            DLIB_TRY((std::apply(callback, std::move(columns))));
           } else {
             std::apply(callback, std::move(columns));
           }
@@ -163,22 +163,22 @@ namespace dlib {
     template<typename ...Columns, typename ...Args, typename Callback>
     Result<void> execute(std::string_view name, Callback&& callback, Args const&... args) {
       static_assert(std::is_invocable_v<Callback, Columns...>);
-      OUTCOME_TRY(pooled, (get_stmt_(name)));
+      DLIB_TRY(pooled, (get_stmt_(name)));
       return db_impl::execute_<Impl, Columns...>(driver(), *pooled, std::forward<Callback>(callback), args...);
     }
 
     template<typename Callback>
     Result<void> transaction(Callback&& cb) noexcept {
-      OUTCOME_TRY((db_impl::begin<Impl>(driver())));
+      DLIB_TRY((db_impl::begin<Impl>(driver())));
       if constexpr (std::is_same_v<void, decltype(cb(*this))>) {
         cb(*this);
         return db_impl::commit<Impl>(driver());
       } else {
         auto res = cb(*this);
         if (!res) {
-          OUTCOME_TRY((db_impl::rollback<Impl>(driver())));
+          DLIB_TRY((db_impl::rollback<Impl>(driver())));
         } else {
-          OUTCOME_TRY((db_impl::commit<Impl>(driver())));
+          DLIB_TRY((db_impl::commit<Impl>(driver())));
         }
         return dlib::success();
       }
@@ -192,7 +192,7 @@ namespace dlib {
     }
 
     static Result<Db_ex> make(std::string_view location, Query_finder queries) {
-      OUTCOME_TRY(driver, (Impl::open(location)));
+      DLIB_TRY(driver, (Impl::open(location)));
       return Db_ex(std::move(driver), std::move(queries));
     }
 
@@ -211,21 +211,21 @@ namespace dlib {
         /* If the query no longer exists in the cache, the stmt shouldn't exist either.
          We then try to finalize and remove it */
         if (found != stmts_.end()) {
-          OUTCOME_TRY((db_impl::finalize<Impl>(driver_, found->second.stmt)));
+          DLIB_TRY((db_impl::finalize<Impl>(driver_, found->second.stmt)));
           stmts_.erase(found);
         }
-        return std::errc::result_out_of_range;
+        return Errors::not_found;
       } else {
         std::string& query = query_optional.value();
         if (found == stmts_.end()) {
           /*If it doesn't exist yet, make it*/
-          OUTCOME_TRY(new_stmt_impl, (db_impl::prepare<Impl>(driver_, query)));
+          DLIB_TRY(new_stmt_impl, (db_impl::prepare<Impl>(driver_, query)));
           Stmt_holder new_stmt{ std::move(new_stmt_impl), std::move(query) };
           found = stmts_.emplace(name, std::move(new_stmt)).first;
         } else if (found->second.query != query) {
           /*If we're stale, finalize the old, prepare the new*/
-          OUTCOME_TRY((db_impl::finalize<Impl>(driver_, found->second.stmt)));
-          OUTCOME_TRY(new_stmt_impl, (db_impl::prepare<Impl>(driver_, query)));
+          DLIB_TRY((db_impl::finalize<Impl>(driver_, found->second.stmt)));
+          DLIB_TRY(new_stmt_impl, (db_impl::prepare<Impl>(driver_, query)));
           found->second.query = std::move(query);
           found->second.stmt = std::move(new_stmt_impl);
         }
@@ -259,7 +259,7 @@ namespace dlib {
       returning = cb(std::move(in)...);
     };
 
-    OUTCOME_TRY((db.execute<Columns...>(std::forward<Name>(name), cb, std::forward<Args>(args)...)));
+    DLIB_TRY((db.execute<Columns...>(std::forward<Name>(name), cb, std::forward<Args>(args)...)));
 
     if (returning) {
       return returning.value();
@@ -292,7 +292,7 @@ namespace dlib {
       returning.emplace_back(cb(std::move(columns)...));
     };
 
-    OUTCOME_TRY((db.execute<Columns...>(std::forward<Name>(name), callback, std::forward<Args>(args)...)));
+    DLIB_TRY((db.execute<Columns...>(std::forward<Name>(name), callback, std::forward<Args>(args)...)));
 
     return returning;
   }

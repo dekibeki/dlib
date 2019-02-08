@@ -113,7 +113,7 @@ namespace dlib {
     Result<Deserialization<T, InputIterator>> deserialize(InputIterator start, EndIterator end, Type_arg<T>) noexcept {
       std::array<std::byte, sizeof(T)> binary;
       for (auto& byte : binary) {
-        OUTCOME_TRY(read, (::dlib::serialization::deserialize<std::byte>(start, end)));
+        DLIB_TRY(read, (::dlib::serialization::deserialize<std::byte>(start, end)));
         start = read.iter;
         byte = read.val;
       }
@@ -127,7 +127,7 @@ namespace dlib {
       if (start != end) {
         byte = *start++;
       } else {
-        return std::errc::bad_address;
+        return Errors::buffer_too_small;
       }
 
       return Deserialization<std::byte, InputIterator>{byte, std::move(start)};
@@ -135,12 +135,12 @@ namespace dlib {
 
     template<typename T, typename InputIterator, typename EndIterator>
     Result<Deserialization<std::vector<T>, InputIterator>> deserialize(InputIterator start, EndIterator end, Type_arg<std::vector<T>>) noexcept {
-      OUTCOME_TRY(size, (::dlib::serialization::deserialize<typename std::vector<T>::size_type>(std::move(start), end)));
+      DLIB_TRY(size, (::dlib::serialization::deserialize<typename std::vector<T>::size_type>(std::move(start), end)));
       start = std::move(size.iter);
       std::vector<T> returning;
       returning.reserve(size.val);
       for (size_t i = 0; i < size.val; ++i) {
-        OUTCOME_TRY(new_val, (::dlib::serialization::deserialize<T>(std::move(start), end)));
+        DLIB_TRY(new_val, (::dlib::serialization::deserialize<T>(std::move(start), end)));
         start = std::move(new_val.iter);
         returning.emplace_back(std::move(new_val.val));
       }
@@ -155,7 +155,7 @@ namespace dlib {
       if constexpr (on == target) {
         return Deserialization<Aggregate, InputIterator>{ { std::move(waiting)... }, std::move(start)};
       } else {
-        OUTCOME_TRY(new_val, (::dlib::serialization::deserialize<T>(std::move(start), end)));
+        DLIB_TRY(new_val, (::dlib::serialization::deserialize<T>(std::move(start), end)));
         return deserialize_aggregate<target, Aggregate, T>(std::move(new_val.iter), std::move(end), std::forward<Waiting>(waiting)..., std::move(new_val.val));
       }
     }

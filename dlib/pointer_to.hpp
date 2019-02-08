@@ -185,7 +185,7 @@ namespace dlib {
     template<typename ...Args>
       constexpr Result<Holder<T>> operator()(Args&&... args) const noexcept {
       if constexpr (is_result<decltype(T::make(std::declval<Args>()...))>) {
-        OUTCOME_TRY(making, (T::make(std::forward<Args>(args)...)));
+        DLIB_TRY(making, (T::make(std::forward<Args>(args)...)));
         return Holder<T>{std::move(making)};
       } else {
         return Holder<T>{T::make(std::forward<Args>(args)...)};

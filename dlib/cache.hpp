@@ -79,7 +79,7 @@ namespace dlib {
         if (through) {
           return set_(key, std::move(through.value()));
         } else {
-          return std::errc::bad_address;
+          return Errors::not_found;
         }
       }
 
@@ -147,13 +147,13 @@ namespace dlib {
       Result<Cache_line> read_(Key const& key) const noexcept {
         const auto found = lines_.find(key);
         if (found == lines_.end()) {
-          return std::errc::bad_address;
+          return Errors::not_found;
         } else {
           auto ptr = found->second;
           if (ptr) {
             return ptr;
           } else {
-            return std::errc::bad_address;
+            return Errors::not_found;
           }
         }
       }
@@ -165,7 +165,7 @@ namespace dlib {
             return std::move(updated.value());
           }
         }
-        return std::errc::bad_address;
+        return Errors::not_found;
       }
 
       Cache_line set_(Key const& key, Cache_line ptr) noexcept {

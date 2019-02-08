@@ -78,7 +78,7 @@ namespace dlib {
       Result<Type> locked_get_() noexcept {
         if (this->holding_.empty()) {
           //TODO: fix this, make a nice error_message
-          return std::errc::no_message;
+          return Errors::empty;
         } else {
           Type value = std::move(holding_.back());
           holding_.pop_back();
@@ -114,12 +114,12 @@ namespace dlib {
 
       template<typename Constructor>
       Result<Pooled> get(Constructor&& constructor) {
-        OUTCOME_TRY(value, (this->get_(std::forward<Constructor>(constructor))));
+        DLIB_TRY(value, (this->get_(std::forward<Constructor>(constructor))));
         return Pooled( value );
       }
 
       Result<Pooled> get() {
-        OUTCOME_TRY(value, (this->get_()));
+        DLIB_TRY(value, (this->get_()));
         return Pooled( value );
       }
 
@@ -147,11 +147,11 @@ namespace dlib {
 
       template<typename Constructor>
       Result<Pooled> get(Constructor&& constructor) {
-        OUTCOME_TRY(value, (this->get_(std::forward<Constructor>(constructor))));
+        DLIB_TRY(value, (this->get_(std::forward<Constructor>(constructor))));
       }
 
       Result<Pooled> get() noexcept {
-        OUTCOME_TRY(value, (this->get_()));
+        DLIB_TRY(value, (this->get_()));
         return Pooled(value, Pooled_info{ atomic_load(&version_) });
       }
 
