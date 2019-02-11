@@ -28,9 +28,6 @@ BOOST_AUTO_TEST_CASE(cache_string_string_no_source) {
   BOOST_TEST(!cache->read_through("test 2"));
 }
 
-template<template<typename...> typename T, typename U>
-constexpr bool test = dlib::meta_impl::IsWrappedByImpl<T, U>::value;
-
 BOOST_AUTO_TEST_CASE(cache_reads) {
   using Cache = dlib::Cache<int, int>;
   using Map = std::unordered_map<int, int>;

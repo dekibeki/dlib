@@ -93,11 +93,7 @@ namespace dlib::strong_type {
   using Unwrap = decltype(unwrap(std::declval<T>()));
 
   template<typename T>
-  T wrap(Strong_type_type<T> const& val) {
-    return T{ impl::wrap_escape_hatch, val };
-  }
-  template<typename T>
-  T wrap(Strong_type_type<T>&& val) {
+  constexpr T wrap(Strong_type_type<T> val) noexcept {
     return T{ impl::wrap_escape_hatch, std::move(val) };
   }
 
@@ -844,7 +840,7 @@ namespace dlib::strong_type {
   /*->*/
   using Member_of_pointer = impl::Nullary_op<impl::Member_of_pointer,
     wrapping::Unwrap_all<defaults::Member_of_pointer>>;
-  //NYI using PointerToMemberOfPointer = impl::Unary_op<impl::PointerToMemberOfPointer>;
+  //NYI using PointerToMember_of_pointer = impl::Unary_op<impl::PointerToMember_of_pointer>;
 
   /*()*/
   using Function_call = impl::Variadic_op<impl::Function_call,
@@ -971,11 +967,10 @@ namespace dlib::strong_type {
       using Type = Type_;
       using Options = Options_;
 
-      template<typename T>
-      friend T dlib::strong_type::wrap(Strong_type_type<T> const& val);
-      template<typename T>
-      friend T dlib::strong_type::wrap(Strong_type_type<T>&& val);
+      constexpr Strong_type(Wrap_escape_hatch, Type val) noexcept :
+        val_{ std::move(val) } {
 
+      }
       template<typename ...Args, typename = AllowConstructor<Construct<Args...>, Options>>
       explicit Strong_type(Args&&... args) :
         val_{ std::forward<Args>(args)... } {
@@ -1020,22 +1015,22 @@ namespace dlib::strong_type {
         return Functor{}(*this, std::forward<T>(t));
       }
 
-      template<typename T = Strong_type & , typename Functor = GetFunctor<MemberOfPointer, T>>
+      template<typename T = Strong_type & , typename Functor = GetFunctor<Member_of_pointer, T>>
       decltype(auto) operator->() {
         return Functor{}(*this);
       }
 
-      template<typename T = Strong_type const&, typename Functor = GetFunctor<MemberOfPointer, T>>
+      template<typename T = Strong_type const&, typename Functor = GetFunctor<Member_of_pointer, T>>
       decltype(auto) operator->() const {
         return Functor{}(*this);
       }
 
-      template<typename ...Args, typename Functor = GetFunctor<FunctionCall, Strong_type&, Args...>>
+      template<typename ...Args, typename Functor = GetFunctor<Function_call, Strong_type&, Args...>>
       decltype(auto) operator()(Args&&... args) {
         return Functor{}(*this, std::forward<Args>(args)...);
       }
 
-      template<typename ...Args, typename Functor = GetFunctor<FunctionCall, Strong_type const&, Args...>>
+      template<typename ...Args, typename Functor = GetFunctor<Function_call, Strong_type const&, Args...>>
       decltype(auto) operator()(Args&&... args) const {
         return Functor{}(*this, std::forward<Args>(args)...);
       }
@@ -1048,15 +1043,6 @@ namespace dlib::strong_type {
         return val_;
       }
     private:
-      Strong_type(Wrap_escape_hatch, Type const& val) :
-        val_{ val} {
-
-      }
-      Strong_type(Wrap_escape_hatch, Type&& val) :
-        val_{ std::move(val) } {
-
-      }
-
       Type val_;
     };
   }

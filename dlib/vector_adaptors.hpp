@@ -219,7 +219,7 @@ namespace dlib {
   //  Holder holder_;
   //};
 
-  template<typename T, template<typename> typename Vector>
+  template<typename T, template<typename...> typename Vector>
   class Unordered_vector {
   public:
     using Holder = Vector<T>;

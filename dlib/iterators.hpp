@@ -290,7 +290,7 @@ namespace dlib {
     static Soa_iterator make(First first, Rest... rest) noexcept {
       return Soa_iterator{ std::move(first), std::move(rest)... };
     }
-    void swap(Soa_iterator& other) noexcept {
+    constexpr void swap(Soa_iterator& other) noexcept {
       std::swap(iters_, other.iters_);
     }
     reference operator*() const noexcept {
@@ -390,6 +390,11 @@ namespace dlib {
     Soa_iterator<Iters...> copy{ me };
     copy -= i;
     return copy;
+  }
+
+  template<typename ...Columns>
+  constexpr void swap(Soa_iterator<Columns...>& first, Soa_iterator<Columns...>& second) noexcept {
+    first.swap(second);
   }
 
   template<typename ...Iters>

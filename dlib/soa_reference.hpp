@@ -4,6 +4,8 @@
 #include <type_traits>
 #include <functional>
 
+#include <dlib/util.hpp>
+
 namespace dlib {
   template<typename ...Ts>
   class Soa_reference {
@@ -78,6 +80,21 @@ namespace dlib {
       using Check = std::is_same<std::decay_t<T>, std::decay_t<Searching_for>>;
     };
   }
+
+  template<::std::size_t i, typename ...Ts>
+  constexpr decltype(auto) get(::dlib::Soa_reference<Ts...> const& t) noexcept {
+    return std::get<i>(t.get_underlying()).get();
+  }
+
+  template<typename T, typename ...Ts>
+  constexpr decltype(auto) get(::dlib::Soa_reference<Ts...> const& t) noexcept {
+    return find_if_tuples<soa_reference_impl::Get_checker<T>::template Check>(t);
+  }
+
+  template<typename ...Ts>
+  void swap(Soa_reference<Ts...> r1, Soa_reference<Ts...> r2) noexcept {
+    return r1.swap(r2);
+  }
 }
 
 namespace std {
@@ -92,19 +109,4 @@ namespace std {
   public:
     using type = ::std::tuple_element_t<i, ::std::tuple<Ts...>>;
   };
-
-  template<::std::size_t i, typename ...Ts>
-  constexpr decltype(auto) get(::dlib::Soa_reference<Ts...> const& t) noexcept {
-    return std::get<i>(t.get_underlying()).get();
-  }
-
-  template<typename T, typename ...Ts>
-  constexpr decltype(auto) get(::dlib::Soa_reference<Ts...> const& t) noexcept {
-    return ::dlib::find_if_tuples<::dlib::soa_reference_impl::Get_checker<T>::template Check>(t);
-  }
-
-  template<typename ...Ts>
-  void swap(::dlib::Soa_reference<Ts...>& r1, ::dlib::Soa_reference<Ts...>& r2) {
-    return r1.swap(r2);
-  }
 }

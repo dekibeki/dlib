@@ -132,7 +132,8 @@ namespace dlib {
 
       if constexpr (on < first_size) {
         if constexpr (Check<std::tuple_element_t<on, std::decay_t<First>>>::value) {
-          return std::get<on>(std::forward<First>(first));
+          using std::get;
+          return get<on>(std::forward<First>(first));
         } else {
           return find_if_tuples_impl<on + 1, Check>(std::forward<First>(first), std::forward<Rest>(rest)...);
         }

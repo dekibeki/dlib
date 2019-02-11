@@ -27,7 +27,8 @@ BOOST_AUTO_TEST_CASE(soa_sort) {
   Testing_soa soa{ generate_testing_soa() };
 
   std::sort(soa.begin(), soa.end(), [](auto&& v1, auto&& v2) {
-    return std::get<0>(v1) < std::get<0>(v2);
+    using std::get;
+    return get<0>(v1) < get<0>(v2);
     });
 }
 
@@ -38,11 +39,11 @@ BOOST_AUTO_TEST_CASE(soa_erase) {
   soa = generate_testing_soa();
   soa.erase(soa.begin() + 1, soa.end());
   BOOST_TEST((soa.size() == 1));
-  BOOST_TEST((std::get<std::string>(*soa.begin()) == "row1"));
+  BOOST_TEST((::dlib::get<std::string>(*soa.begin()) == "row1"));
   soa = generate_testing_soa();
   soa.erase(soa.begin(), soa.end() - 1);
   BOOST_TEST((soa.size() == 1));
-  BOOST_TEST((std::get<std::string>(*soa.begin()) == "row3"));
+  BOOST_TEST((::dlib::get<std::string>(*soa.begin()) == "row3"));
 }
 
 BOOST_AUTO_TEST_CASE(soa_move_and_copy) {

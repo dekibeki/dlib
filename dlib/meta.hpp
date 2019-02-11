@@ -36,7 +36,7 @@ namespace dlib {
 
   template<typename D = void, typename ...Args>
   constexpr meta_impl::ArrayTypeHelper<D, Args...> makeArray(Args&&... args) noexcept {
-    return impl::ArrayTypeHelper<D, Args...>{std::forward<Args>(args)...};
+    return meta_impl::ArrayTypeHelper<D, Args...>{std::forward<Args>(args)...};
   }
 
   namespace meta_impl {

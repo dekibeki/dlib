@@ -115,7 +115,7 @@ namespace dlib {
   template<typename Distance, typename Scalar>
   constexpr Quaternion<Distance> scale(Quaternion<Distance> a, Scalar scalar) {
     Quaternion<Distance> returning;
-    for (auto&[a_compoment, returning_component] : make_soa_range(a, returning)) {
+    for (auto&[a_component, returning_component] : make_soa_range(a, returning)) {
       returning_component = static_cast<Distance>(a_component * scalar);
     }
   }

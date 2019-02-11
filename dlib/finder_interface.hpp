@@ -58,7 +58,7 @@ namespace dlib {
         using Interface_function<Parent_, false, std::optional<Value>(*)(Key), Finder_default_get, Get_tag>::Interface_function;
 
         std::optional<Value> get(Key key) noexcept {
-          return Interface_function::call_(std::move(key));
+          return this->call_(std::move(key));
         }
       };
     };
@@ -74,7 +74,7 @@ namespace dlib {
         using Interface_function<Parent_, false, bool(*)(Key), Finder_default_contains, Contains_tag>::Interface_function;
 
         bool contains(Key key) noexcept {
-          return Interface_function::call_(std::move(key));
+          return this->call_(std::move(key));
         }
       };
     };
@@ -99,5 +99,5 @@ namespace dlib {
   };
 
   template<typename Key, typename Value>
-  using Finder_interface = Interface<typename Finder_subinterface<Key, Value>::template Type>;
+  using Finder_interface = Interface<Finder_subinterface<Key, Value>::template Type>;
 }

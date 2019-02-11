@@ -95,7 +95,7 @@ namespace dlib {
   constexpr decltype(auto) get_arg_defaulted(Fallback&& fallback, Options&&... options) {
 
     if constexpr(contains_arg<Type,Options...>) {
-      return arg_impl::get<Type>(std::forward<Options>(options)...);
+      return args_impl::get<Type>(std::forward<Options>(options)...);
     }  else {
       return std::forward<Fallback>(fallback);
     } 
@@ -105,7 +105,7 @@ namespace dlib {
   constexpr decltype(auto) get_varg_defaulted(Fallback&& fallback, Options&&... options) {
 
     if constexpr (contains_varg<Type, Options...>) {
-      return arg_impl::vget<Type>(std::forward<Options>(options)...);
+      return args_impl::vget<Type>(std::forward<Options>(options)...);
     } else {
       return std::forward<Fallback>(fallback);
     }

@@ -102,7 +102,7 @@ namespace dlib {
       iterator erase(iterator start, iterator end) noexcept {
         return std::apply(
           [](auto&&... new_iters) { return iterator{ std::move(new_iters)... };},
-          for_each_tuples(
+          ::dlib::for_each_tuples(
             [](auto& vec, auto const& start, auto const& end) { return vec.erase(start, end);},
             holding_, start.get_underlying(), end.get_underlying()));
       }
@@ -116,7 +116,7 @@ namespace dlib {
 
       template<typename T>
       constexpr Array_view<T> view() noexcept {
-        auto& vec = std::get<Vector_impl<T>>(holding_);
+        auto& vec = std::get<::dlib::soa_impl::Vector_impl<T>>(holding_);
 
         return { vec.data(), vec.size() };
       }

@@ -9,6 +9,7 @@ namespace {
   constexpr std::string_view default_error_string = "Unknown error code value";
 
   constexpr std::array error_strings{
+    std::string_view{"Success"},
     std::string_view{"The container is empty"},
     std::string_view{"Could not find what was being searched for"},
     std::string_view{"The buffer is smaller then is needed/was expected"}

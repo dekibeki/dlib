@@ -29,14 +29,14 @@ namespace dlib {
   template<typename Parent, bool is_const, typename Function, template<typename> typename Default, typename Tag>
   class Interface_function;
   
-  template<typename Parent_, bool is_const, typename Return_, typename ...Args_, template<typename> typename Default_, typename Tag_>
-  class Interface_function<Parent_, is_const, Return_(*)(Args_...), Default_, Tag_>
+  template<typename Parent_, bool is_const_, typename Return_, typename ...Args_, template<typename> typename Default_, typename Tag_>
+  class Interface_function<Parent_, is_const_, Return_(*)(Args_...), Default_, Tag_>
   {
   private:
     using Parent = Parent_;
     using Return = Return_;
     using Args_tuple = std::tuple<Args_...>;
-    using Instance_ptr = std::conditional_t<is_const, const void*, void*>;
+    using Instance_ptr = std::conditional_t<is_const_, const void*, void*>;
     using Function = Return(*)(Instance_ptr, Args_...) noexcept;
     template<typename Instance>
     using Default = Default_<Instance>;
@@ -47,14 +47,14 @@ namespace dlib {
       wrapper_{ get_override_<Instance>(std::forward<Overrides>(overrides)...) } {
     }
   protected:
-    template<typename ...Call_args, typename = std::enable_if_t<!is_const>>
+    template<typename ...Call_args, bool is_const = is_const_, typename = std::enable_if_t<!is_const>>
     constexpr Return call_(Call_args&&... call_args) noexcept {
       return call_impl_(
         static_cast<void*>(static_cast<Parent*>(this)->get_instance()),
         std::forward<Call_args>(call_args)...);
     }
     
-    template<typename ...Call_args, typename = std::enable_if_t<is_const>>
+    template<typename ...Call_args, bool is_const = is_const_, typename = std::enable_if_t<is_const>>
     constexpr Return call_(Call_args&&... call_args) const noexcept {
       return call_impl_(
         static_cast<const void*>(static_cast<const Parent*>(this)->get_instance()),
@@ -68,11 +68,11 @@ namespace dlib {
     
     template<typename Instance, typename ...Overrides>
     constexpr static Function get_override_(Overrides&&... overrides) noexcept {
-      using Lambda = typename Get_arg_defaulted<
-        typename Arg<Tag>::template Holder,
+      using Lambda = Get_arg_defaulted<
+        Arg<Tag>::template Holder,
         Default<Instance>,
         Overrides...>;
-      if constexpr (is_const) {
+      if constexpr (is_const_) {
         return &interface_impl::const_wrapper<Instance, Lambda, Return, Args_...>;
       } else {
         return &interface_impl::wrapper<Instance, Lambda, Return, Args_...>;

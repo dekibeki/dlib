@@ -19,7 +19,7 @@ BOOST_AUTO_TEST_CASE(serialization_compound) {
   std::vector<std::byte> writing;
   auto write_size = serialization::serialization_size(uint32_t{ 0xdeadbeef }, double{ -5.5 });
   writing.reserve(write_size);
-  auto write_res = serialization::serialize(std::back_insert_iterator{ writing }, uint32_t{ 0xdeadbeef }, double{ -5.5 });
+  serialization::serialize(std::back_insert_iterator{ writing }, uint32_t{ 0xdeadbeef }, double{ -5.5 });
 }
 
 namespace {

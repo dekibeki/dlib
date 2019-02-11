@@ -60,12 +60,20 @@ namespace dlib {
 }*/
 
 namespace dlib {
+  namespace outcome_impl {
+    struct Error_code_data {
+      int value;
+      const std::error_category* category;
+    };
+  }
+
   enum class Result_val : bool {
     success = true,
     failure = false
   };
 
   enum class Errors : int {
+    success = 0,
     empty,
     not_found,
     buffer_too_small,
@@ -80,13 +88,13 @@ namespace dlib {
       val_{ std::move(res) } {
 
     }
-    constexpr Result(std::error_code ec) noexcept :
-      val_{ std::move(ec) } {
+    Result(std::error_code ec) noexcept :
+      val_{ outcome_impl::Error_code_data{ ec.value(), &ec.category() } } {
 
     }
     template<typename Val, typename = std::enable_if_t<std::is_error_code_enum_v<Val>>>
-    constexpr Result(Val val) noexcept :
-      val_{ std::error_code{std::move(val)} } {
+    Result(Val val) noexcept :
+      Result{ std::error_code{std::move(val)} } {
 
     }
     constexpr bool success() const noexcept {
@@ -102,7 +110,8 @@ namespace dlib {
       return std::get<0>(val_);
     }
     std::error_code error() const noexcept {
-      return std::get<1>(val_);
+      outcome_impl::Error_code_data const& data = std::get<1>(val_);
+      return std::error_code{ data.value, *data.category };
     }
     constexpr explicit operator bool() const noexcept {
       return success();
@@ -117,7 +126,7 @@ namespace dlib {
   private:
     std::variant<
       T,
-      std::error_code> val_;
+      outcome_impl::Error_code_data> val_;
   };
 
   template<>
@@ -127,9 +136,14 @@ namespace dlib {
       val_{ std::nullopt } {
 
     }
-    template<typename Res>
-    constexpr Result(Res&& res) noexcept :
-      val_{ std::forward<Res>(res) } {
+
+    Result(std::error_code ec) noexcept :
+      val_{ outcome_impl::Error_code_data{ ec.value(), &ec.category()} } {
+
+    }
+    template<typename Val, typename = std::enable_if_t<std::is_error_code_enum_v<Val>>>
+    Result(Val val) noexcept :
+      Result{ std::error_code{std::move(val)} } {
 
     }
 
@@ -143,7 +157,8 @@ namespace dlib {
 
     }
     std::error_code error() const noexcept {
-      return val_.value();
+      outcome_impl::Error_code_data const& data = val_.value();
+      return std::error_code{ data.value, *data.category };
     }
     constexpr explicit operator bool() const noexcept {
       return success();
@@ -156,7 +171,7 @@ namespace dlib {
       }
     }
   private:
-    std::optional<std::error_code> val_;
+    std::optional<outcome_impl::Error_code_data> val_;
   };
 
   constexpr Result<void> success() noexcept {
