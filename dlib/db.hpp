@@ -11,6 +11,7 @@
 #include <dlib/util.hpp>
 #include <dlib/finder_interface.hpp>
 
+#include <boost/type_traits/is_assignable.hpp> 
 #include <boost/unordered_map.hpp>
 
 namespace dlib {
