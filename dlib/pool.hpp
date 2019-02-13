@@ -108,10 +108,10 @@ namespace dlib {
     class Pool final :
       public Pool_base<Type_, Concurrency_, Pointer_> {
     public:
-      using Base = Pool_base<Type_, Concurrency_, Pointer_>
+      using Base = Pool_base<Type_, Concurrency_, Pointer_>;
       using Pooled = ::dlib::Pooled<Pool>;
       using Pointer_to = Get_pointer_to<typename Base::Pointer_arg, Pool>;
-      using Holder = Get_holder<Pointer_arg, Pool>;
+      using Holder = Get_holder<typename Base::Pointer_arg, Pool>;
 
       template<typename Constructor>
       Result<Pooled> get(Constructor&& constructor) {
