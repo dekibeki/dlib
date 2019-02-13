@@ -260,15 +260,15 @@ namespace dlib {
   private:
 
     template<typename T>
-    using Value_type = typename std::iterator_traits<T>::value_type;
+    using Value_type = std::remove_reference_t<typename std::iterator_traits<T>::reference>;
 
     template<typename T>
     using Pointer = typename std::iterator_traits<T>::pointer;
   public:
     using difference_type = typename std::iterator_traits<First>::difference_type;
     using value_type = std::tuple<
-      std::reference_wrapper<Value_type<First>>,
-      std::reference_wrapper<Value_type<Rest>>...>;
+      Value_type<First>,
+      Value_type<Rest>...>;
     using pointer = std::tuple<
       Pointer<First>,
       Pointer<Rest>...>;

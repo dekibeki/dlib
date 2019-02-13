@@ -10,8 +10,8 @@ namespace dlib {
   template<typename ...Ts>
   class Soa_reference {
   public:
-
-    using Value = std::tuple<std::reference_wrapper<Ts>...>;
+    using Reference = std::tuple<std::reference_wrapper<Ts>...>;
+    using Value = std::tuple<Ts...>;
 
     Soa_reference(Ts&... ts) :
       holding_{ ts... } {
@@ -29,9 +29,16 @@ namespace dlib {
       return *this;
     }
 
-    Soa_reference& operator=(Value const& other) {
+    Soa_reference& operator=(Reference const& other) {
       for_each_tuples(
         [](auto& left, auto const& right) { left.get() = right.get(); },
+        holding_, other);
+
+      return *this;
+    }
+    Soa_reference& operator=(Value const& other) {
+      for_each_tuples(
+        [](auto& left, auto const& right) {left.get() = right;},
         holding_, other);
 
       return *this;
@@ -45,9 +52,17 @@ namespace dlib {
       return *this;
     }
 
-    Soa_reference& operator=(Value&& other) {
+    Soa_reference& operator=(Reference&& other) {
       for_each_tuples(
         [](auto& left, auto&& right) {left.get() = std::move(right.get()); },
+        holding_, other);
+
+      return *this;
+    }
+
+    Soa_reference& operator=(Value&& other) {
+      for_each_tuples(
+        [](auto& left, auto&& right) {left.get() = std::move(right);},
         holding_, other);
 
       return *this;
@@ -59,17 +74,22 @@ namespace dlib {
         holding_, other.holding_);
     }
 
-    Value const& get_underlying() const noexcept {
+    Reference const& get_underlying() const noexcept {
       return holding_;
     }
-    constexpr operator Value&() noexcept {
+    constexpr operator Reference&() noexcept {
       return holding_;
     }
-    constexpr operator Value const&() const noexcept {
+    constexpr operator Reference const&() const noexcept {
       return holding_;
+    }
+    operator Value() const noexcept {
+      return std::apply(
+        [](auto... refs) { return Value{ refs.get()... };},
+        holding_);
     }
   private:
-    Value holding_;
+    Reference holding_;
   };
 
   namespace soa_reference_impl {
