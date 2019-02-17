@@ -1049,6 +1049,14 @@ namespace dlib::strong_type {
 
   template<typename Type, typename ...Options>
   using Strong_type = impl::Strong_type<Type, ExpandEx<impl::ExpandTo, Options...>>;
+
+  struct Strong_type_hash {
+    template<typename T, typename = std::enable_if_t<is_strong_type<T>>, typename = std::enable_if_t<std::is_invocable_v<std::hash<Strong_type_type<T>>,Strong_type_type<T> const&>>>
+    std::size_t operator()(T const& t) const noexcept {
+      std::hash<Strong_type_type<T>> hasher;
+      return hasher(t);
+    }
+  };
 }
 
 template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Less, L, R>>

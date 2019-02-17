@@ -84,3 +84,21 @@ BOOST_AUTO_TEST_CASE(strong_type_const_ref_equals) {
   BOOST_TEST((sv == sv_cr));
   BOOST_TEST((sv_cr == sv));
 }
+
+BOOST_AUTO_TEST_CASE(strong_type_hash) {
+  strong_type::Strong_type_hash hash;
+
+  struct Sv :
+    public strong_type::Strong_type<int, strong_type::Construct<int>,
+    strong_type::Equal::Self> {
+    using Strong_type::Strong_type;
+    using Strong_type::operator=;
+  };
+
+  struct Non_sv {
+    int i;
+  };
+
+  static_assert(std::is_invocable_v<strong_type::Strong_type_hash, Sv>);
+  static_assert(!std::is_invocable_v<strong_type::Strong_type_hash, Non_sv>);
+}
