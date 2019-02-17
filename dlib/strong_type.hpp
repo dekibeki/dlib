@@ -1054,7 +1054,7 @@ namespace dlib::strong_type {
     template<typename T, typename = std::enable_if_t<is_strong_type<T>>, typename = std::enable_if_t<std::is_invocable_v<std::hash<Strong_type_type<T>>,Strong_type_type<T> const&>>>
     std::size_t operator()(T const& t) const noexcept {
       std::hash<Strong_type_type<T>> hasher;
-      return hasher(t);
+      return hasher(unwrap(t));
     }
   };
 }

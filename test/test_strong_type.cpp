@@ -101,4 +101,6 @@ BOOST_AUTO_TEST_CASE(strong_type_hash) {
 
   static_assert(std::is_invocable_v<strong_type::Strong_type_hash, Sv>);
   static_assert(!std::is_invocable_v<strong_type::Strong_type_hash, Non_sv>);
+
+  hash(Sv{ 0 });
 }
