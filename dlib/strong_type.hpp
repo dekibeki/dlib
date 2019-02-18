@@ -957,6 +957,201 @@ namespace dlib::strong_type {
     template<template<typename> typename Option, typename ...Ts>
     using GetFunctor = First<Filter<GetMatchingFunctorHelper<Ts...>::template Value, GetFunctors<Option, Concat<Strong_type_options<Ts>...>>>>;
 
+    template<typename L, typename R, typename Functor = GetFunctor<Less, L, R>>
+    decltype(auto) operator<(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Greater, L, R>>
+    decltype(auto) operator>(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Less_equal, L, R>>
+    decltype(auto) operator<=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Greater_equal, L, R>>
+    decltype(auto) operator>=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Not_equal, L, R>>
+    decltype(auto) operator!=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Equal, L, R>>
+    decltype(auto) operator==(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Add, L, R>>
+    decltype(auto) operator+(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Add_assign, L, R>>
+    decltype(auto) operator+=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Sub, L, R>>
+    decltype(auto) operator-(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Sub_assign, L, R>>
+    decltype(auto) operator-=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Mult, L, R>>
+    decltype(auto) operator*(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Mult_assign, L, R>>
+    decltype(auto) operator*=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Div, L, R>>
+    decltype(auto) operator/(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Div_assign, L, R>>
+    decltype(auto) operator/=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Mod, L, R>>
+    decltype(auto) operator%(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Mod_assign, L, R>>
+    decltype(auto) operator%=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Binary_and, L, R>>
+    decltype(auto) operator&(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Binary_and_assign, L, R>>
+    decltype(auto) operator&=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Binary_or, L, R>>
+    decltype(auto) operator|(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Binary_or_assign, L, R>>
+    decltype(auto) operator|=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Xor, L, R>>
+    decltype(auto) operator^(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Xor_assign, L, R>>
+    decltype(auto) operator^=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Left_shift, L, R>>
+    decltype(auto) operator<<(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Left_shift_assign, L, R>>
+    decltype(auto) operator<<=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Right_shift, L, R>>
+    decltype(auto) operator>>(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Right_shift_assign, L, R>>
+    decltype(auto) operator>>=(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename Functor = GetFunctor<Binary_not, L>>
+    decltype(auto) operator~(L&& l) {
+      return Functor{}(std::forward<L>(l));
+    }
+
+    template<typename L, typename Functor = GetFunctor<Unary_plus, L>>
+    decltype(auto) operator+(L&& l) {
+      return Functor{}(std::forward<L>(l));
+    }
+
+    template<typename L, typename Functor = GetFunctor<Unary_minus, L>>
+    decltype(auto) operator-(L&& l) {
+      return Functor{}(std::forward<L>(l));
+    }
+
+    template<typename L, typename Functor = GetFunctor<Pre_increment, L>>
+    decltype(auto) operator++(L&& l) {
+      return Functor{}(std::forward<L>(l));
+    }
+
+    template<typename L, typename Functor = GetFunctor<Pre_decrement, L>>
+    decltype(auto) operator--(L&& l) {
+      return Functor{}(std::forward<L>(l));
+    }
+
+    template<typename L, typename Functor = GetFunctor<Post_increment, L>>
+    decltype(auto) operator++(L&& l, int) {
+      return Functor{}(std::forward<L>(l));
+    }
+
+    template<typename L, typename Functor = GetFunctor<Post_decrement, L>>
+    decltype(auto) operator--(L&& l, int) {
+      return Functor{}(std::forward<L>(l));
+    }
+
+    template<typename L, typename Functor = GetFunctor<Logical_not, L>>
+    decltype(auto) operator!(L&& l) {
+      return Functor{}(std::forward<L>(l));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Logical_and, L, R>>
+    decltype(auto) operator&&(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Logical_or, L, R>>
+    decltype(auto) operator||(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
+    template<typename L, typename Functor = GetFunctor<Indirection, L>>
+    decltype(auto) operator*(L&& l) {
+      return Functor{}(std::forward<L>(l));
+    }
+
+    template<typename L, typename Functor = GetFunctor<Address_of, L>>
+    decltype(auto) operator&(L&& l) {
+      return Functor{}(std::forward<L>(l));
+    }
+
+    template<typename L, typename R, typename Functor = GetFunctor<Comma, L, R>>
+    decltype(auto) operator,(L&& l, R&& r) {
+      return Functor{}(std::forward<L>(l), std::forward<R>(r));
+    }
+
     template<typename Type_, typename Options_>
     struct Strong_type :
       private DisallowDestructor<Options_>,
@@ -1035,6 +1230,123 @@ namespace dlib::strong_type {
         return Functor{}(*this, std::forward<Args>(args)...);
       }
 
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator<(L&& l, R&& r);
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator>(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator<=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator>=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator!=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator==(L&& l, R&& r);
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator+(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator+=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator-(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator-=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator*(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator*=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator/(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator/=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator%(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator%=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator&(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator&=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator|(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator|=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator^(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator^=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator<<(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator<<=(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator>>(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator>>=(L&& l, R&& r) ;
+
+      template<typename L, typename Functor>
+      friend decltype(auto) operator~(L&& l) ;
+
+      template<typename L, typename Functor>
+      friend decltype(auto) operator+(L&& l) ;
+
+      template<typename L, typename Functor>
+      friend decltype(auto) operator-(L&& l) ;
+
+      template<typename L, typename Functor>
+      friend decltype(auto) operator++(L&& l) ;
+
+      template<typename L, typename Functor>
+      friend decltype(auto) operator--(L&& l) ;
+
+      template<typename L, typename Functor>
+      friend decltype(auto) operator++(L&& l, int) ;
+
+      template<typename L, typename Functor>
+      friend decltype(auto) operator--(L&& l, int) ;
+
+      template<typename L, typename Functor>
+      friend decltype(auto) operator!(L&& l) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator&&(L&& l, R&& r) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator||(L&& l, R&& r) ;
+
+      template<typename L, typename Functor>
+      friend decltype(auto) operator*(L&& l) ;
+
+      template<typename L, typename Functor>
+      friend decltype(auto) operator&(L&& l) ;
+
+      template<typename L, typename R, typename Functor>
+      friend decltype(auto) operator,(L&& l, R&& r) ;
+
       Type& get() noexcept {
         return val_;
       }
@@ -1057,199 +1369,11 @@ namespace dlib::strong_type {
       return hasher(unwrap(t));
     }
   };
-}
 
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Less, L, R>>
-decltype(auto) operator<(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Greater, L, R>>
-decltype(auto) operator>(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Less_equal, L, R>>
-decltype(auto) operator<=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Greater_equal, L, R>>
-decltype(auto) operator>=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Equal, L, R>>
-decltype(auto) operator==(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Not_equal, L, R>>
-decltype(auto) operator!=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Add, L, R>>
-decltype(auto) operator+(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Add_assign, L, R>>
-decltype(auto) operator+=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Sub, L, R>>
-decltype(auto) operator-(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Sub_assign, L, R>>
-decltype(auto) operator-=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Mult, L, R>>
-decltype(auto) operator*(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Mult_assign, L, R>>
-decltype(auto) operator*=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Div, L, R>>
-decltype(auto) operator/(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Div_assign, L, R>>
-decltype(auto) operator/=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Mod, L, R>>
-decltype(auto) operator%(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Mod_assign, L, R>>
-decltype(auto) operator%=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Binary_and, L, R>>
-decltype(auto) operator&(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Binary_and_assign, L, R>>
-decltype(auto) operator&=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Binary_or, L, R>>
-decltype(auto) operator|(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Binary_or_assign, L, R>>
-decltype(auto) operator|=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Xor, L, R>>
-decltype(auto) operator^(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Xor_assign, L, R>>
-decltype(auto) operator^=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Left_shift, L, R>>
-decltype(auto) operator<<(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Left_shift_assign, L, R>>
-decltype(auto) operator<<=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Right_shift, L, R>>
-decltype(auto) operator>>(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Right_shift_assign, L, R>>
-decltype(auto) operator>>=(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Binary_not, L>>
-decltype(auto) operator~(L&& l) {
-  return Functor{}(std::forward<L>(l));
-}
-
-template<typename L, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Unary_plus, L>>
-decltype(auto) operator+(L&& l) {
-  return Functor{}(std::forward<L>(l));
-}
-
-template<typename L, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Unary_minus, L>>
-decltype(auto) operator-(L&& l) {
-  return Functor{}(std::forward<L>(l));
-}
-
-template<typename L, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Pre_increment, L>>
-decltype(auto) operator++(L&& l) {
-  return Functor{}(std::forward<L>(l));
-}
-
-template<typename L, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Pre_decrement, L>>
-decltype(auto) operator--(L&& l) {
-  return Functor{}(std::forward<L>(l));
-}
-
-template<typename L, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Post_increment, L>>
-decltype(auto) operator++(L&& l, int) {
-  return Functor{}(std::forward<L>(l));
-}
-
-template<typename L, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Post_decrement, L>>
-decltype(auto) operator--(L&& l, int) {
-  return Functor{}(std::forward<L>(l));
-}
-
-template<typename L, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Logical_not, L>>
-decltype(auto) operator!(L&& l) {
-  return Functor{}(std::forward<L>(l));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Logical_and, L, R>>
-decltype(auto) operator&&(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Logical_or, L, R>>
-decltype(auto) operator||(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
-}
-
-template<typename L, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Indirection, L>>
-decltype(auto) operator*(L&& l) {
-  return Functor{}(std::forward<L>(l));
-}
-
-template<typename L, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Address_of, L>>
-decltype(auto) operator&(L&& l) {
-  return Functor{}(std::forward<L>(l));
-}
-
-template<typename L, typename R, typename Functor = ::dlib::strong_type::impl::GetFunctor<::dlib::strong_type::impl::Comma, L, R>>
-decltype(auto) operator,(L&& l, R&& r) {
-  return Functor{}(std::forward<L>(l), std::forward<R>(r));
+  struct Strong_type_eq {
+    template<typename T, typename = std::enable_if_t<is_strong_type<T>>>
+    bool operator()(T const& v1, T const& v2) const noexcept {
+      return (v1 == v2);
+    }
+  };
 }
