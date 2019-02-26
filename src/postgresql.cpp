@@ -1,4 +1,69 @@
-#include "postgresql_db.h"
+#include <dlib/postgresql.hpp>
+
+#include <libpq-fe.h>
+
+/* DRIVER DESTRUCTOR */
+
+void dlib::postgresql_impl::Driver_destructor::operator()(void* ptr) const noexcept {
+  PGconn* connection = static_cast<PGconn*>(ptr);
+  if (connection != nullptr) {
+    PQfinish(connection);
+  }
+}
+
+/* STMT DESTRUCTOR */
+
+void dlib::postgresql_impl::Stmt_destructor::operator()(void* ptr) const noexcept {
+  PGresult* result = static_cast<PGresult*>(ptr);
+
+  if (result != nullptr) {
+    PQclear(result);
+  }
+}
+
+/* DRIVER IMPL */
+
+dlib::postgresql_impl::Driver_impl::Driver_impl() :
+  connection{ nullptr } {
+
+}
+
+/* STMT IMPL */
+
+dlib::postgresql_impl::Stmt_impl::Stmt_impl() :
+  sql{},
+  index_binds{},
+  named_binds{},
+  result{ nullptr } {
+
+}
+
+dlib::Result<dlib::postgresql_impl::Impl::Driver> dlib::postgresql_impl::Impl::open(std::string_view location) noexcept {
+
+  //we need location null terminated :(
+  std::string null_terminated_location{ location };
+  
+  PGconn* connection_ = PQconnectdb(null_terminated_location.c_str());
+
+
+
+  Driver returning;
+
+
+
+  if (PQstatus(
+    connection_) != CONNECTION_OK) {
+    log_.critical(
+      "Could not connection to postgresql, {}",
+      PQerrorMessage(
+        connection_));
+
+    return -1;
+  } else {
+    return 0;
+  }
+
+}
 
 int db::details::postgresql::prepare(
   Db_base& me_,

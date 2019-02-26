@@ -39,9 +39,14 @@ namespace dlib {
     template<typename Impl>
     using Driver_impl = typename Impl::Driver;
 
-    template<typename Driver>
-    Result<void> open(Driver&& driver, std::string_view location) noexcept {
-      return driver.open(location);
+    template<typename Impl>
+    Result<Driver_impl<Impl>> open(std::string_view location) noexcept {
+      return Impl::open(location);
+    }
+
+    template<typename Impl>
+    Result<void> close(Driver_impl<Impl>& driver) noexcept {
+      return Impl::close(driver);
     }
 
     template<typename Impl>
@@ -193,10 +198,17 @@ namespace dlib {
     }
 
     static Result<Db_ex> make(std::string_view location, Query_finder queries) {
-      DLIB_TRY(driver, (Impl::open(location)));
+      DLIB_TRY(driver, (open<Impl>(location)));
       return Db_ex(std::move(driver), std::move(queries));
     }
 
+    ~Db_ex() {
+      for (auto&[name, stmt] : stmts_) {
+        db_impl::finalize<Impl>(driver_, stmt.stmt);
+      }
+
+      db_impl::close<Impl>(driver_);
+    }
   private:
     Db_ex(Driver&& driver, Query_finder queries) noexcept :
       driver_(std::move(driver)),

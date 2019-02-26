@@ -37,6 +37,10 @@
         {
           "name": "CMAKE_CXX_COMPILER",
           "value": "clang-cl.exe"
+        },
+        {
+          "name": "CMAKE_TOOLCHAIN_FILE",
+          "value": "G:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
         }
       ]
     },
