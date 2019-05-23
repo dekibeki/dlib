@@ -52,8 +52,6 @@ namespace {
     static dlib::Result<void> close(Driver&) noexcept {
       return dlib::success();
     }
-
-    static constexpr bool thread_safe = true;
   };
 
   using Db = dlib::Db<Impl>;

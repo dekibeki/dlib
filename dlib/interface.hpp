@@ -68,10 +68,10 @@ namespace dlib {
     
     template<typename Instance, typename ...Overrides>
     constexpr static Function get_override_(Overrides&&... overrides) noexcept {
-      using Lambda = Get_arg_defaulted<
+      using Lambda = First<Get_arg_defaulted<
         Arg<Tag>::template Holder,
-        Default<Instance>,
-        Overrides...>;
+        List<Default<Instance>>,
+        Overrides...>>;
       if constexpr (is_const_) {
         return &interface_impl::const_wrapper<Instance, Lambda, Return, Args_...>;
       } else {

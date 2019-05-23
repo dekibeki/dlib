@@ -5,23 +5,23 @@
 
 namespace dlib {
   namespace args_impl {
-    template<template<typename> typename Target, typename Default, typename ...Options>
+    template<template<typename...> typename Target, typename Default, typename ...Options>
     struct GetImpl;
 
-    template<template<typename> typename Target, typename Default>
+    template<template<typename...> typename Target, typename Default>
     struct GetImpl<Target, Default> {
       using type = Default;
       static constexpr bool found = false;
     };
 
-    template<template<typename> typename Target, typename Default, typename First, typename ...Rest>
+    template<template<typename...> typename Target, typename Default, typename First, typename ...Rest>
     struct GetImpl<Target, Default, First, Rest...> {
       using type = typename GetImpl<Target, Default, Rest...>::type;
     };
 
-    template<template<typename> typename Target, typename Default, typename Found, typename ...Rest>
-    struct GetImpl<Target, Default, Target<Found>, Rest...> {
-      using type = Found;
+    template<template<typename...> typename Target, typename Default, typename... Found, typename ...Rest>
+    struct GetImpl<Target, Default, Target<Found...>, Rest...> {
+      using type = Target<Found...>;
       static constexpr bool found = true;
     };
 
@@ -146,10 +146,10 @@ namespace dlib {
   }
   */
 
-  template<template<typename> typename Target, typename Default, typename ...Options>
+  template<template<typename...> typename Target, typename Default, typename ...Options>
   using Get_arg_defaulted = typename args_impl::GetImpl<Target, Default, Options...>::type;
 
-  template<template<typename> typename Target, typename ...Options>
+  template<template<typename...> typename Target, typename ...Options>
   using Get_arg = ::std::enable_if_t<args_impl::GetImpl<Target, void, Options...>::found,
     typename args_impl::GetImpl<Target, void, Options...>::type>;
 }

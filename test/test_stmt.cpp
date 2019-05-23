@@ -50,16 +50,14 @@ namespace {
     static dlib::Result<void> close(Driver&) noexcept {
       return dlib::success();
     }
-
-    static constexpr bool thread_safe = true;
   };
 
   using Db = dlib::Db<Impl>;
 }
 
 BOOST_AUTO_TEST_CASE(stmt_execute) {
-  constexpr auto test_stmt = dlib::stmt(
-    []() {return "hello"; });
+  constexpr dlib::Stmt test_stmt{
+    []() {return "hello"; } };
 
   auto made_res{ dlib::make<Db>("") };
   BOOST_TEST((!!made_res));
@@ -71,9 +69,9 @@ BOOST_AUTO_TEST_CASE(stmt_execute) {
 }
 
 BOOST_AUTO_TEST_CASE(stmt_binds_execute) {
-  constexpr auto test_stmt = dlib::stmt(
+  constexpr dlib::Stmt test_stmt{
     []() {return "hello"; },
-    dlib::binds<int>);
+    dlib::binds<int> };
 
   auto made_res{ dlib::make<Db>("") };
   BOOST_TEST((!!made_res));
@@ -85,9 +83,9 @@ BOOST_AUTO_TEST_CASE(stmt_binds_execute) {
 }
 
 BOOST_AUTO_TEST_CASE(stmt_columns_execute) {
-  constexpr auto test_stmt = dlib::stmt(
+  constexpr dlib::Stmt test_stmt{
     []() {return "hello"; },
-    dlib::columns<int>);
+    dlib::columns<int> };
 
   auto made_res{ dlib::make<Db>("") };
   BOOST_TEST((!!made_res));
@@ -99,10 +97,10 @@ BOOST_AUTO_TEST_CASE(stmt_columns_execute) {
 }
 
 BOOST_AUTO_TEST_CASE(stmt_binds_columns_execute) {
-  constexpr auto test_stmt = dlib::stmt(
+  constexpr dlib::Stmt test_stmt{
     []() {return "hello"; },
     dlib::columns<int>,
-    dlib::binds<int>);
+    dlib::binds<int> };
 
   auto made_res{ dlib::make<Db>("") };
   BOOST_TEST((!!made_res));
@@ -114,10 +112,10 @@ BOOST_AUTO_TEST_CASE(stmt_binds_columns_execute) {
 }
 
 BOOST_AUTO_TEST_CASE(stmt_extras_execute) {
-  constexpr auto test_stmt = dlib::stmt(
+  constexpr dlib::Stmt test_stmt{
     []() {return "hello"; },
     "some other crap",
-    0);
+    0 };
 
   auto made_res{ dlib::make<Db>("") };
   BOOST_TEST((!!made_res));

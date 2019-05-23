@@ -137,8 +137,9 @@ namespace dlib {
       struct Pooled_info {
         Version version;
       };
-      using Pointer_to = Get_pointer_to<Pointer_arg, Versioned_pool>;
-      using Holder = Get_holder<Pointer_arg, Versioned_pool>;
+      using Base = Pool_base<Type_, Concurrency_, Pointer_>;
+      using Pointer_to = Get_pointer_to<typename Base::Pointer_arg, Versioned_pool>;
+      using Holder = Get_holder<typename Base::Pointer_arg, Versioned_pool>;
       using Pooled = Pooled<Versioned_pool>;
 
       Versioned_pool() :
@@ -177,11 +178,11 @@ namespace dlib {
 
   template<typename Type, typename ...Args>
   using Pool = pool_impl::Pool<Type, 
-    Get_arg_defaulted<Concurrency_is, Std_concurrency, Args...>,
-    Get_arg_defaulted<Pointer_is, Raw_pointer, Args...>>;
+    First<Get_arg_defaulted<Concurrency_is, List<Std_concurrency>, Args...>>,
+    First<Get_arg_defaulted<Pointer_is, List<Raw_pointer>, Args...>>>;
 
   template<typename Type, typename ...Args>
   using Versioned_pool = pool_impl::Versioned_pool<Type, 
-    Get_arg_defaulted<Concurrency_is, Std_concurrency, Args...>,
-    Get_arg_defaulted<Pointer_is, Raw_pointer, Args...>>;
+    First<Get_arg_defaulted<Concurrency_is, List<Std_concurrency>, Args...>>,
+    First<Get_arg_defaulted<Pointer_is, List<Raw_pointer>, Args...>>>;
 }
