@@ -132,7 +132,7 @@ if(${SQLite3_FOUND})
 
   target_link_libraries(dlib_sqlite
     PRIVATE
-    ${sqlite3})
+    ${SQLite3_LIBRARIES})
 else()
   set(DLIB_SQLITE_FOUND false)
   message("did not find sqlite3")
