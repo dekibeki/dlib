@@ -27,7 +27,7 @@ namespace dlib {
 
     template<typename Type, typename Checking>
     constexpr bool is_get = std::is_same_v<Type, std::decay_t<Checking>>;
-    template<template<typename> typename Type, typename Checking>
+    template<template<typename...> typename Type, typename Checking>
     constexpr bool is_vget = isWrappedBy<Type, std::decay_t<Checking>>;
 
     template<typename Type, typename First, typename ...Rest>
@@ -39,7 +39,7 @@ namespace dlib {
       }
     }
 
-    template<template<typename> typename Type, typename First, typename ...Rest>
+    template<template<typename...> typename Type, typename First, typename ...Rest>
     constexpr decltype(auto) vget(First&& first, Rest&&... rest) noexcept {
       if constexpr (is_vget<Type, First>) {
         return std::forward<First>(first);
@@ -88,7 +88,7 @@ namespace dlib {
   template<typename Type, typename ...Options>
   constexpr bool contains_arg = (false || ... || args_impl::is_get<Type, Options>);
 
-  template<template<typename> typename Type, typename ...Options>
+  template<template<typename...> typename Type, typename ...Options>
   constexpr bool contains_varg = (false || ... || args_impl::is_vget<Type, Options>);
 
   template<typename Type, typename Fallback, typename ...Options>
@@ -101,7 +101,7 @@ namespace dlib {
     } 
   }
 
-  template<template<typename> typename Type, typename Fallback, typename ...Options>
+  template<template<typename...> typename Type, typename Fallback, typename ...Options>
   constexpr decltype(auto) get_varg_defaulted(Fallback&& fallback, Options&&... options) {
 
     if constexpr (contains_varg<Type, Options...>) {
@@ -120,7 +120,7 @@ namespace dlib {
     }
   }
 
-  template<template<typename> typename Type, typename ...Options>
+  template<template<typename...> typename Type, typename ...Options>
   constexpr decltype(auto) get_varg(Options&&... options) {
     static_assert(contains_varg<Type, Options...>,
       "The type we are looking for ('Type') was not found in Options...");

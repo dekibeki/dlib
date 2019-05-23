@@ -58,16 +58,72 @@ namespace {
 }
 
 BOOST_AUTO_TEST_CASE(stmt_execute) {
-  constexpr dlib::Stmt test_stmt{
-    []() {return "hello"; },
-    dlib::list<int>,
-    dlib::list<float> };
+  constexpr auto test_stmt = dlib::stmt(
+    []() {return "hello"; });
 
   auto made_res{ dlib::make<Db>("") };
   BOOST_TEST((!!made_res));
   auto&& db = made_res.value();
   {
-    auto execute_res = test_stmt.execute(*db, [](int) {}, 1.0f);
+    auto execute_res = test_stmt.execute(*db, []() {});
+    BOOST_TEST((!!execute_res));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(stmt_binds_execute) {
+  constexpr auto test_stmt = dlib::stmt(
+    []() {return "hello"; },
+    dlib::binds<int>);
+
+  auto made_res{ dlib::make<Db>("") };
+  BOOST_TEST((!!made_res));
+  auto&& db = made_res.value();
+  {
+    auto execute_res = test_stmt.execute(*db, []() {}, 0);
+    BOOST_TEST((!!execute_res));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(stmt_columns_execute) {
+  constexpr auto test_stmt = dlib::stmt(
+    []() {return "hello"; },
+    dlib::columns<int>);
+
+  auto made_res{ dlib::make<Db>("") };
+  BOOST_TEST((!!made_res));
+  auto&& db = made_res.value();
+  {
+    auto execute_res = test_stmt.execute(*db, [](int) {});
+    BOOST_TEST((!!execute_res));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(stmt_binds_columns_execute) {
+  constexpr auto test_stmt = dlib::stmt(
+    []() {return "hello"; },
+    dlib::columns<int>,
+    dlib::binds<int>);
+
+  auto made_res{ dlib::make<Db>("") };
+  BOOST_TEST((!!made_res));
+  auto&& db = made_res.value();
+  {
+    auto execute_res = test_stmt.execute(*db, [](int) {}, 0);
+    BOOST_TEST((!!execute_res));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(stmt_extras_execute) {
+  constexpr auto test_stmt = dlib::stmt(
+    []() {return "hello"; },
+    "some other crap",
+    0);
+
+  auto made_res{ dlib::make<Db>("") };
+  BOOST_TEST((!!made_res));
+  auto&& db = made_res.value();
+  {
+    auto execute_res = test_stmt.execute(*db, []() {});
     BOOST_TEST((!!execute_res));
   }
 }
