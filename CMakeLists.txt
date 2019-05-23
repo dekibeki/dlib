@@ -109,7 +109,7 @@ endif()
 
 find_package(Sqlite3)
 
-if(${Sqlite3_FOUND})
+if(${SQLite3_FOUND})
   message("found sqlite3")
   set(DLIB_SQLITE_FOUND true)
 
@@ -133,7 +133,6 @@ if(${Sqlite3_FOUND})
   target_link_libraries(dlib_sqlite
     PRIVATE
     ${sqlite3})
-
 else()
   set(DLIB_SQLITE_FOUND false)
   message("did not find sqlite3")
