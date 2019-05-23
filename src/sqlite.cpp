@@ -218,7 +218,7 @@ dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index
 
 dlib::Result<std::string_view> dlib::sqlite_impl::Impl::get_column(Driver&, Stmt& stmt, int index, Column_type<std::string_view>) noexcept {
   const unsigned char* text_ptr{ sqlite3_column_text(static_cast<sqlite3_stmt*>(stmt), index) };
-  std::size_t text_length{ sqlite3_column_bytes(static_cast<sqlite3_stmt*>(stmt), index) };
+  std::size_t text_length{ static_cast<std::size_t>(sqlite3_column_bytes(static_cast<sqlite3_stmt*>(stmt), index)) };
 
   if (text_length == 0 || text_ptr == nullptr) {
     return Sqlite3_error::nomem;
@@ -243,7 +243,7 @@ dlib::Result<double> dlib::sqlite_impl::Impl::get_column(Driver&, Stmt& stmt, in
 
 dlib::Result<dlib::Array_view<const std::byte>> dlib::sqlite_impl::Impl::get_column(Driver&, Stmt& stmt, int index, Column_type<Array_view<const std::byte>>) noexcept {
   const void* text_ptr{ sqlite3_column_blob(static_cast<sqlite3_stmt*>(stmt), index) };
-  std::size_t text_length{ sqlite3_column_bytes(static_cast<sqlite3_stmt*>(stmt), index) };
+  std::size_t text_length{ static_cast<std::size_t>(sqlite3_column_bytes(static_cast<sqlite3_stmt*>(stmt), index)) };
 
   if (text_length == 0 || text_ptr == nullptr) {
     return Sqlite3_error::nomem;
