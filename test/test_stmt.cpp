@@ -1,9 +1,7 @@
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 
-#include <dlib/db.hpp>
-
-struct Test_db;
+#include <dlib/stmt.hpp>
 
 namespace {
   constexpr int initial_counter_val = 3;
@@ -13,7 +11,7 @@ namespace {
     };
 
     struct Driver {
-      
+
     };
 
     static dlib::Result<Stmt> prepare(Driver&, std::string_view sql) noexcept {
@@ -27,7 +25,7 @@ namespace {
       return dlib::success();
     }
     template<typename ...T>
-    static dlib::Result<void> bind(Driver&, Stmt const&, T&&...) noexcept {
+    static dlib::Result<void> bind(Driver&, Stmt const&, T&& ...) noexcept {
       return dlib::success();
     }
 
@@ -57,15 +55,19 @@ namespace {
   };
 
   using Db = dlib::Db<Impl>;
-
 }
 
-BOOST_AUTO_TEST_CASE(db_execute) {
+BOOST_AUTO_TEST_CASE(stmt_execute) {
+  constexpr dlib::Stmt test_stmt{
+    []() {return "hello"; },
+    dlib::list<int>,
+    dlib::list<float> };
+
   auto made_res{ dlib::make<Db>("") };
   BOOST_TEST((!!made_res));
-  auto&& db = made_res.value(); 
+  auto&& db = made_res.value();
   {
-    auto execute_res = db->execute("test1", []() {});
+    auto execute_res = test_stmt.execute(*db, [](int) {}, 1.0f);
     BOOST_TEST((!!execute_res));
   }
 }

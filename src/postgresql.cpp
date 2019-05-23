@@ -23,7 +23,7 @@ void dlib::postgresql_impl::Stmt_destructor::operator()(void* ptr) const noexcep
 
 /* DRIVER IMPL */
 
-dlib::postgresql_impl::Driver_impl::Driver_impl() :
+dlib::postgresql_impl::Driver_impl::Driver_impl() noexcept :
   connection{ nullptr } {
 
 }

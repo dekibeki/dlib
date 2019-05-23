@@ -52,6 +52,7 @@ add_executable(dlibTest
   ${dlibTest}/test_quaternion.cpp
   ${dlibTest}/test_serialization.cpp
   ${dlibTest}/test_soa.cpp
+  ${dlibTest}/test_stmt.cpp
   ${dlibTest}/test_strong_type.cpp
   ${dlibTest}/test_vector_adaptors.cpp
   )
@@ -80,6 +81,7 @@ find_package(postgresql)
 
 if(${PostgreSQL_FOUND})
   message("found postgresql")
+  set(DLIB_POSTGRESQL_FOUND true)
 
   project(dlib_postgresql CXX)
   
@@ -90,6 +92,7 @@ if(${PostgreSQL_FOUND})
   target_include_directories(dlib_postgresql
     PUBLIC
     ${dlibInclude}
+    ${Boost_INCLUDE_DIRS}
     PRIVATE
     ${PostgreSQL_INCLUDE_DIRS}
     )
@@ -100,6 +103,7 @@ if(${PostgreSQL_FOUND})
     PRIVATE
     ${PostgreSQL_LIBRARIES})
 else()
+  set(DLIB_POSTGRESQL_FOUND false)
   message("did not find postgresql")
 endif()
 
@@ -107,6 +111,7 @@ find_package(Sqlite3)
 
 if(${Sqlite3_FOUND})
   message("found sqlite3")
+  set(DLIB_SQLITE_FOUND true)
 
   find_path(Sqlite3_INCLUDE_DIRS sqlite3.h)
 
@@ -130,5 +135,6 @@ if(${Sqlite3_FOUND})
     ${sqlite3})
 
 else()
+  set(DLIB_SQLITE_FOUND false)
   message("did not find sqlite3")
 endif()

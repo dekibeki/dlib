@@ -9,7 +9,6 @@
 #include <dlib/cache.hpp>
 #include <dlib/outcome.hpp>
 #include <dlib/util.hpp>
-#include <dlib/finder_interface.hpp>
 
 #include <boost/type_traits/is_assignable.hpp> 
 #include <boost/unordered_map.hpp>
@@ -164,13 +163,27 @@ namespace dlib {
     using Pointer_to = Get_pointer_to<Pointer_arg, Db_ex>;
     using Holder = Get_holder<Pointer_arg, Db_ex>;
 
-    using Query_finder = Finder_interface<std::string_view, std::string>;
+    template<typename ...Columns, typename Query, typename ...Args, typename Callback>
+    Result<void> execute(Query query, Callback&& callback, Args const&... args) noexcept {
+      return execute<Columns...>(query.query_string(), std::forward<Callback>(callback), args...);
+      
+    }
 
     template<typename ...Columns, typename ...Args, typename Callback>
-    Result<void> execute(std::string_view name, Callback&& callback, Args const&... args) {
+    Result<void> execute(std::string_view query, Callback&& callback, Args const& ... args) noexcept {
       static_assert(std::is_invocable_v<Callback, Columns...>);
-      DLIB_TRY(pooled, (get_stmt_(name)));
+      DLIB_TRY(pooled, (get_stmt_(query)));
       return db_impl::execute_<Impl, Columns...>(driver(), *pooled, std::forward<Callback>(callback), args...);
+    }
+
+    template<typename ...Columns, typename ...Args, typename Callback>
+    Result<void> execute(std::string const& query, Callback&& callback, Args const& ... args) noexcept {
+      return execute<Columns...>(std::string_view{ query }, std::forward<Callback>(callback), args...);
+    }
+
+    template<typename ...Columns, typename ...Args, typename Callback>
+    Result<void> execute(const char* query, Callback&& callback, Args const& ... args) noexcept {
+      return execute<Columns...>(std::string_view{ query }, std::forward<Callback>(callback), args...);
     }
 
     template<typename Callback>
@@ -197,63 +210,37 @@ namespace dlib {
       return driver_;
     }
 
-    static Result<Db_ex> make(std::string_view location, Query_finder queries) {
-      DLIB_TRY(driver, (open<Impl>(location)));
-      return Db_ex(std::move(driver), std::move(queries));
+    static Result<Db_ex> make(std::string_view location) {
+      DLIB_TRY(driver, (db_impl::open<Impl>(location)));
+      return Db_ex(std::move(driver));
     }
 
     ~Db_ex() {
       for (auto&[name, stmt] : stmts_) {
-        db_impl::finalize<Impl>(driver_, stmt.stmt);
+        db_impl::finalize<Impl>(driver_, stmt);
       }
 
       db_impl::close<Impl>(driver_);
     }
   private:
-    Db_ex(Driver&& driver, Query_finder queries) noexcept :
-      driver_(std::move(driver)),
-      queries_(std::move(queries)) {
+    Db_ex(Driver&& driver) noexcept :
+      driver_(std::move(driver)) {
 
     }
 
-    Result<Stmt*> get_stmt_(std::string_view name) noexcept {
-      auto query_optional{ queries_.get(name) };
-      auto found = stmts_.find(as_string_view(name), std::hash<std::string_view>(), std::equal_to<>());
+    Result<Stmt*> get_stmt_(std::string_view query) noexcept {
+      auto found = stmts_.find(query, std::hash<std::string_view>(), std::equal_to<>());
 
-      if (!query_optional.has_value()) {
-        /* If the query no longer exists in the cache, the stmt shouldn't exist either.
-         We then try to finalize and remove it */
-        if (found != stmts_.end()) {
-          DLIB_TRY((db_impl::finalize<Impl>(driver_, found->second.stmt)));
-          stmts_.erase(found);
-        }
-        return Errors::not_found;
-      } else {
-        std::string& query = query_optional.value();
-        if (found == stmts_.end()) {
-          /*If it doesn't exist yet, make it*/
-          DLIB_TRY(new_stmt_impl, (db_impl::prepare<Impl>(driver_, query)));
-          Stmt_holder new_stmt{ std::move(new_stmt_impl), std::move(query) };
-          found = stmts_.emplace(name, std::move(new_stmt)).first;
-        } else if (found->second.query != query) {
-          /*If we're stale, finalize the old, prepare the new*/
-          DLIB_TRY((db_impl::finalize<Impl>(driver_, found->second.stmt)));
-          DLIB_TRY(new_stmt_impl, (db_impl::prepare<Impl>(driver_, query)));
-          found->second.query = std::move(query);
-          found->second.stmt = std::move(new_stmt_impl);
-        }
-        return &found->second.stmt;
+      if (found == stmts_.end()) {
+        /*If it doesn't exist yet, make it*/
+        DLIB_TRY(new_stmt, (db_impl::prepare<Impl>(driver_, query)));
+        found = stmts_.emplace(query, std::move(new_stmt)).first;
       }
+      return &found->second;
     }
-
-    struct Stmt_holder {
-      Stmt stmt;
-      std::string query;
-    };
 
     Driver driver_;
-    Query_finder queries_;
-    boost::unordered_map<std::string, Stmt_holder, std::hash<std::string>, std::equal_to<>> stmts_;
+    boost::unordered_map<std::string, Stmt, std::hash<std::string>, std::equal_to<>> stmts_;
   };
 
   template<typename Driver, typename ...Args>
