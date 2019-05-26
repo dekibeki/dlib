@@ -75,6 +75,14 @@ dlib::Result<int> dlib::sqlite_impl::name_to_index(void* stmt, std::string_view 
   }
 }
 
+/* STMT */
+
+dlib::sqlite_impl::Impl::Stmt::Stmt() noexcept :
+  done_initial{ false },
+  stmts{} {
+
+}
+
 /* IMPL */
 
 dlib::Result<dlib::sqlite_impl::Impl::Driver> dlib::sqlite_impl::Impl::open(std::string_view location) noexcept {
@@ -85,21 +93,23 @@ dlib::Result<dlib::sqlite_impl::Impl::Driver> dlib::sqlite_impl::Impl::open(std:
   if (int res = sqlite3_open_v2(null_terminated_location.c_str(), &db, SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE, nullptr); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
-    return Driver{ db };
+    Driver returning;
+    returning.db = db;
+    return std::move(returning);
   }
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::close(Driver& driver) noexcept {
-  if (int res = sqlite3_close_v2(static_cast<sqlite3*>(driver)); res != SQLITE_OK) {
+  if (int res = sqlite3_close_v2(static_cast<sqlite3*>(driver.db)); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
-    driver = nullptr;
+    driver.db = nullptr;
     return success();
   }
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::begin(Driver& driver) noexcept {
-  if (int res = sqlite3_exec(static_cast<sqlite3*>(driver), "BEGIN;", nullptr, nullptr, nullptr); res != SQLITE_OK) {
+  if (int res = sqlite3_exec(static_cast<sqlite3*>(driver.db), "BEGIN;", nullptr, nullptr, nullptr); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -107,7 +117,7 @@ dlib::Result<void> dlib::sqlite_impl::Impl::begin(Driver& driver) noexcept {
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::commit(Driver& driver) noexcept {
-  if (int res = sqlite3_exec(static_cast<sqlite3*>(driver), "COMMIT;", nullptr, nullptr, nullptr); res != SQLITE_OK) {
+  if (int res = sqlite3_exec(static_cast<sqlite3*>(driver.db), "COMMIT;", nullptr, nullptr, nullptr); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -115,7 +125,7 @@ dlib::Result<void> dlib::sqlite_impl::Impl::commit(Driver& driver) noexcept {
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::rollback(Driver& driver) noexcept {
-  if (int res = sqlite3_exec(static_cast<sqlite3*>(driver), "ROLLBACK;", nullptr, nullptr, nullptr); res != SQLITE_OK) {
+  if (int res = sqlite3_exec(static_cast<sqlite3*>(driver.db), "ROLLBACK;", nullptr, nullptr, nullptr); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -123,27 +133,58 @@ dlib::Result<void> dlib::sqlite_impl::Impl::rollback(Driver& driver) noexcept {
 }
 
 dlib::Result<dlib::sqlite_impl::Impl::Stmt> dlib::sqlite_impl::Impl::prepare(Driver& driver, std::string_view sql) noexcept {
-  sqlite3_stmt* stmt{ nullptr };
-  if (int res = sqlite3_prepare_v3(static_cast<sqlite3*>(driver), sql.data(), sql.size(), 0, &stmt, nullptr); res != SQLITE_OK) {
-    return static_cast<Sqlite3_error>(res);
-  } else {
-    return Stmt{ stmt };
+  dlib::sqlite_impl::Impl::Stmt returning;
+  sqlite3_stmt* current_stmt{ nullptr };
+  const char* next_stmt{ nullptr };
+  while (!sql.empty()) {
+    
+    if (int res = sqlite3_prepare_v3(static_cast<sqlite3*>(driver.db), sql.data(), sql.size() , 0, &current_stmt, &next_stmt); res != SQLITE_OK) {
+      for (void* stmt : returning.stmts) {
+        sqlite3_finalize(static_cast<sqlite3_stmt*>(stmt));
+      }
+      return static_cast<Sqlite3_error>(res);
+    } else {
+      returning.stmts.emplace_back(current_stmt);
+      sql = sql.substr(next_stmt - sql.data());
+    }
   }
+  return returning;
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::reset(Driver& driver, Stmt& stmt) noexcept {
-  sqlite3_reset(static_cast<sqlite3_stmt*>(stmt));
+  for(void* indiv_stmt : stmt.stmts) {
+    sqlite3_reset(static_cast<sqlite3_stmt*>(indiv_stmt));
+  }
+  stmt.done_initial = false;
   return success();
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::finalize(Driver& driver, Stmt& stmt) noexcept {
-  sqlite3_finalize(static_cast<sqlite3_stmt*>(stmt));
-  stmt = nullptr;
+  for (void* indiv_stmt : stmt.stmts) {
+    sqlite3_finalize(static_cast<sqlite3_stmt*>(indiv_stmt));
+  }
+  stmt.stmts.clear();
   return success();
 }
 
 dlib::Result<dlib::Stmt_step> dlib::sqlite_impl::Impl::step(Driver& driver, Stmt& stmt) noexcept {
-  if (int res = sqlite3_step(static_cast<sqlite3_stmt*>(stmt)); res == SQLITE_ROW) {
+  if (!stmt.done_initial) {
+    int res;
+    for (auto on = stmt.stmts.begin(); on != stmt.stmts.end() - 1; ++on) {
+      while ((res = sqlite3_step(static_cast<sqlite3_stmt*>(*on))) != SQLITE_DONE) {
+        switch (res) {
+        case SQLITE_ROW:
+        case SQLITE_BUSY:
+        case SQLITE_LOCKED:
+          continue;
+        default:
+          return static_cast<Sqlite3_error>(res);
+        }
+      }
+    }
+    stmt.done_initial = true;
+  }
+  if (int res = sqlite3_step(static_cast<sqlite3_stmt*>(stmt.stmts.back())); res == SQLITE_ROW) {
     return dlib::Stmt_step::Data;
   } else if (res == SQLITE_DONE) {
     return dlib::Stmt_step::Done;
@@ -153,7 +194,7 @@ dlib::Result<dlib::Stmt_step> dlib::sqlite_impl::Impl::step(Driver& driver, Stmt
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index, nullptr_t) noexcept {
-  if (int res = sqlite3_bind_null(static_cast<sqlite3_stmt*>(stmt), index); res != SQLITE_OK) {
+  if (int res = sqlite3_bind_null(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -161,7 +202,7 @@ dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index, const char* str) noexcept {
-  if (int res = sqlite3_bind_text(static_cast<sqlite3_stmt*>(stmt), index, str, -1, SQLITE_TRANSIENT); res != SQLITE_OK) {
+  if (int res = sqlite3_bind_text(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index, str, -1, SQLITE_TRANSIENT); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -169,7 +210,7 @@ dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index, std::string const& str) noexcept {
-  if (int res = sqlite3_bind_text(static_cast<sqlite3_stmt*>(stmt), index, str.data(), str.size(), SQLITE_TRANSIENT); res != SQLITE_OK) {
+  if (int res = sqlite3_bind_text(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index, str.data(), str.size(), SQLITE_TRANSIENT); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -177,7 +218,7 @@ dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index, std::string_view str) noexcept {
-  if (int res = sqlite3_bind_text(static_cast<sqlite3_stmt*>(stmt), index, str.data(), str.size(), SQLITE_TRANSIENT); res != SQLITE_OK) {
+  if (int res = sqlite3_bind_text(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index, str.data(), str.size(), SQLITE_TRANSIENT); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -185,7 +226,7 @@ dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver& driver, Stmt& stmt, int index, int32_t value) noexcept {
-  if (int res = sqlite3_bind_int(static_cast<sqlite3_stmt*>(stmt), index, value); res != SQLITE_OK) {
+  if (int res = sqlite3_bind_int(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index, value); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -193,7 +234,7 @@ dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver& driver, Stmt& stmt, in
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver& driver, Stmt& stmt, int index, int64_t value) noexcept {
-  if (int res = sqlite3_bind_int64(static_cast<sqlite3_stmt*>(stmt), index, value); res != SQLITE_OK) {
+  if (int res = sqlite3_bind_int64(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index, value); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -201,7 +242,7 @@ dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver& driver, Stmt& stmt, in
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver& driver, Stmt& stmt, int index, double value) noexcept {
-  if (int res = sqlite3_bind_double(static_cast<sqlite3_stmt*>(stmt), index, value); res != SQLITE_OK) {
+  if (int res = sqlite3_bind_double(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index, value); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -209,7 +250,7 @@ dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver& driver, Stmt& stmt, in
 }
 
 dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index, Array_view<std::byte> value) noexcept {
-  if (int res = sqlite3_bind_blob(static_cast<sqlite3_stmt*>(stmt), index, value.data(), value.size(), SQLITE_TRANSIENT); res != SQLITE_OK) {
+  if (int res = sqlite3_bind_blob(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index, value.data(), value.size(), SQLITE_TRANSIENT); res != SQLITE_OK) {
     return static_cast<Sqlite3_error>(res);
   } else {
     return success();
@@ -217,8 +258,8 @@ dlib::Result<void> dlib::sqlite_impl::Impl::bind_(Driver&, Stmt& stmt, int index
 }
 
 dlib::Result<std::string_view> dlib::sqlite_impl::Impl::get_column(Driver&, Stmt& stmt, int index, Column_type<std::string_view>) noexcept {
-  const unsigned char* text_ptr{ sqlite3_column_text(static_cast<sqlite3_stmt*>(stmt), index) };
-  std::size_t text_length{ static_cast<std::size_t>(sqlite3_column_bytes(static_cast<sqlite3_stmt*>(stmt), index)) };
+  const unsigned char* text_ptr{ sqlite3_column_text(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index) };
+  std::size_t text_length{ static_cast<std::size_t>(sqlite3_column_bytes(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index)) };
 
   if (text_length == 0 || text_ptr == nullptr) {
     return Sqlite3_error::nomem;
@@ -230,20 +271,20 @@ dlib::Result<std::string_view> dlib::sqlite_impl::Impl::get_column(Driver&, Stmt
 }
 
 dlib::Result<int32_t> dlib::sqlite_impl::Impl::get_column(Driver&, Stmt& stmt, int index, Column_type<int32_t>) noexcept {
-  return sqlite3_column_int(static_cast<sqlite3_stmt*>(stmt), index);
+  return sqlite3_column_int(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index);
 }
 
 dlib::Result<int64_t> dlib::sqlite_impl::Impl::get_column(Driver&, Stmt& stmt, int index, Column_type<int64_t>) noexcept {
-  return sqlite3_column_int64(static_cast<sqlite3_stmt*>(stmt), index);
+  return sqlite3_column_int64(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index);
 }
 
 dlib::Result<double> dlib::sqlite_impl::Impl::get_column(Driver&, Stmt& stmt, int index, Column_type<double>) noexcept {
-  return sqlite3_column_double(static_cast<sqlite3_stmt*>(stmt), index);
+  return sqlite3_column_double(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index);
 }
 
 dlib::Result<dlib::Array_view<const std::byte>> dlib::sqlite_impl::Impl::get_column(Driver&, Stmt& stmt, int index, Column_type<Array_view<const std::byte>>) noexcept {
-  const void* text_ptr{ sqlite3_column_blob(static_cast<sqlite3_stmt*>(stmt), index) };
-  std::size_t text_length{ static_cast<std::size_t>(sqlite3_column_bytes(static_cast<sqlite3_stmt*>(stmt), index)) };
+  const void* text_ptr{ sqlite3_column_blob(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index) };
+  std::size_t text_length{ static_cast<std::size_t>(sqlite3_column_bytes(static_cast<sqlite3_stmt*>(stmt.stmts.back()), index)) };
 
   if (text_length == 0 || text_ptr == nullptr) {
     return Sqlite3_error::nomem;

@@ -31,12 +31,12 @@ namespace dlib {
     }
 
     template<typename ...Db_args, typename Callback>
-    Result<void> execute(Db_ex<Db_args...>& db, Callback&& callback, Args const& ... args) const noexcept {
+    Result<void> execute(Db<Db_args...>& db, Callback&& callback, Args const& ... args) const noexcept {
       return db.template execute<Columns...>(query_string(), std::forward<Callback>(callback), args...);
     }
 
     template<typename ...Db_args, typename Callback>
-    Result<void> operator()(Db_ex<Db_args...>& db, Callback&& callback, Args const& ... args) const noexcept {
+    Result<void> operator()(Db<Db_args...>& db, Callback&& callback, Args const& ... args) const noexcept {
       return execute(db, std::forward<Callback>(callback), args...);
     }
   private:

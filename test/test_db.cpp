@@ -6,64 +6,57 @@
 struct Test_db;
 
 namespace {
-  constexpr int initial_counter_val = 3;
-  struct Impl {
-    struct Stmt {
-      int counter = initial_counter_val;
-    };
-
-    struct Driver {
-      
-    };
-
-    static dlib::Result<Stmt> prepare(Driver&, std::string_view sql) noexcept {
-      return Stmt{};
-    }
-    static dlib::Result<void> reset(Driver&, Stmt& stmt) noexcept {
-      stmt.counter = initial_counter_val;
-      return dlib::success();
-    }
-    static dlib::Result<void> finalize(Driver&, Stmt& stmt) noexcept {
-      return dlib::success();
-    }
-    template<typename ...T>
-    static dlib::Result<void> bind(Driver&, Stmt const&, T&&...) noexcept {
-      return dlib::success();
-    }
-
-    static dlib::Result<dlib::Stmt_step> step(Driver&, Stmt& stmt) noexcept {
-      if (stmt.counter == 0) {
-        return dlib::Stmt_step::Done;
-      } else {
-        --stmt.counter;
-        return dlib::Stmt_step::Data;
-      }
-    }
-
+  struct Result_set {
     template<typename T>
-    static dlib::Result<T> get_column(Driver&, Stmt const&, int, dlib::Column_type<T>) noexcept {
-      return T();
-    }
-
-    static dlib::Result<Driver> open(std::string_view location) noexcept {
-      return Driver();
-    }
-
-    static dlib::Result<void> close(Driver&) noexcept {
-      return dlib::success();
+    dlib::Result<void> get_column(size_t id, T& returning) noexcept {
+      returning = T{};
+      return dlib::success;
     }
   };
 
-  using Db = dlib::Db<Impl>;
+  struct Driver {
+    dlib::Result<void> open(std::string_view location) noexcept {
+      return dlib::success;
+    }
+    dlib::Result<void> close() noexcept {
+      return dlib::success;
+    }
+    dlib::Result<void> begin() noexcept {
+      return dlib::success;
+    }
+    dlib::Result<void> commit() noexcept {
+      return dlib::success;
+    }
+    dlib::Result<void> rollback() noexcept {
+      return dlib::success;
+    }
+    template<typename Cb, typename ...Args>
+    dlib::Result<void> execute(std::string_view sql, Cb&& cb, Args const& ... args) noexcept {
+      Result_set results;
+      return cb(results);
+    }
+  };
+
+  using Db = dlib::Db<Driver>;
 
 }
 
+BOOST_AUTO_TEST_CASE(db_states) {
+  Db db;
+  BOOST_TEST((!db.driver()));
+  BOOST_TEST((!!db.open("")));
+  BOOST_TEST((!db.open("")));
+  BOOST_TEST((!!db.driver()));
+  BOOST_TEST((!!db.close()));
+  BOOST_TEST((!db.close()));
+  BOOST_TEST((!db.driver()));
+}
+
 BOOST_AUTO_TEST_CASE(db_execute) {
-  auto made_res{ dlib::make<Db>("") };
-  BOOST_TEST((!!made_res));
-  auto&& db = made_res.value(); 
-  {
-    auto execute_res = db->execute("test1", []() {});
-    BOOST_TEST((!!execute_res));
-  }
+  Db db;
+  BOOST_TEST((!db.execute("", []() {})));
+  BOOST_TEST((!!db.open("")));
+  BOOST_TEST((!!db.execute("", []() {})));
+  BOOST_TEST((!!db.close()));
+  BOOST_TEST((!db.execute("", []() {})));
 }

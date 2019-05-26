@@ -84,10 +84,15 @@ if(${PostgreSQL_FOUND})
   set(DLIB_POSTGRESQL_FOUND true)
 
   project(dlib_postgresql CXX)
+  project(dlib_postgresqlTest CXX)
   
   add_library(dlib_postgresql
     ${dlibSrc}/postgresql.cpp
     )
+
+  add_executable(dlib_postgresqlTest
+    ${dlibTest}/postgresql_testMain.cpp
+    ${dlibTest}/test_postgresql.cpp)
 
   target_include_directories(dlib_postgresql
     PUBLIC
@@ -97,11 +102,25 @@ if(${PostgreSQL_FOUND})
     ${PostgreSQL_INCLUDE_DIRS}
     )
 
+  target_include_directories(dlib_postgresqlTest
+    PUBLIC
+    ${dlibInclude}
+    PRIVATE
+    ${Boost_INCLUDE_DIRS})
+
   target_compile_features(dlib_postgresql PUBLIC cxx_std_17)
 
+  target_compile_features(dlib_postgresqlTest PUBLIC cxx_std_17)
+
   target_link_libraries(dlib_postgresql
+    PUBLIC
+    dlib
     PRIVATE
     ${PostgreSQL_LIBRARIES})
+
+  target_link_libraries(dlib_postgresqlTest
+    dlib_postgresql
+    ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 else()
   set(DLIB_POSTGRESQL_FOUND false)
   message("did not find postgresql")
@@ -116,10 +135,15 @@ if(${SQLite3_FOUND})
   find_path(Sqlite3_INCLUDE_DIRS sqlite3.h)
 
   project(dlib_sqlite CXX)
+  project(dlib_sqliteTest CXX)
 
   add_library(dlib_sqlite
     ${dlibSrc}/sqlite.cpp
     )
+
+  add_executable(dlib_sqliteTest
+    ${dlibTest}/sqlite_testMain.cpp
+    ${dlibTest}/test_sqlite.cpp)
 
   target_include_directories(dlib_sqlite
     PUBLIC
@@ -128,11 +152,25 @@ if(${SQLite3_FOUND})
     ${Sqlite3_INCLUDE_DIRS}
     )
 
+  target_include_directories(dlib_sqliteTest
+    PUBLIC
+    ${dlibInclude}
+    PRIVATE
+    ${Boost_INCLUDE_DIRS})
+
   target_compile_features(dlib_sqlite PUBLIC cxx_std_17)
 
+  target_compile_features(dlib_sqliteTest PUBLIC cxx_std_17)
+
   target_link_libraries(dlib_sqlite
+    PUBLIC
+    dlib
     PRIVATE
     ${SQLite3_LIBRARIES})
+
+  target_link_libraries(dlib_sqliteTest 
+    dlib_sqlite
+    ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 else()
   set(DLIB_SQLITE_FOUND false)
   message("did not find sqlite3")

@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <optional>
+#include <variant>
 #include <dlib/arrays.hpp>
 #include <dlib/args.hpp>
 #include <dlib/cache.hpp>
@@ -14,166 +15,133 @@
 #include <boost/unordered_map.hpp>
 
 namespace dlib {
-
-  template<typename>
-  struct Column_type {};
-
-  template<typename T>
-  constexpr Column_type<T> column_type = Column_type<T>();
-
-  enum class Stmt_step {
-    Done,
-    Data
-  };
-
   using Blob = Array_view<const std::byte>;
 
   template<typename T>
   using Nullable = std::optional<T>;
 
   namespace db_impl {
-    template<typename Impl>
-    using Stmt_impl = typename Impl::Stmt;
-
-    template<typename Impl>
-    using Driver_impl = typename Impl::Driver;
-
-    template<typename Impl>
-    Result<Driver_impl<Impl>> open(std::string_view location) noexcept {
-      return Impl::open(location);
+    template<typename Driver, typename String>
+    Result<void> open(Driver& driver, String&& location) noexcept {
+      return driver.open(std::forward<String>(location));
     }
 
-    template<typename Impl>
-    Result<void> close(Driver_impl<Impl>& driver) noexcept {
-      return Impl::close(driver);
+    template<typename Driver>
+    Result<void> close(Driver& driver) noexcept {
+      return driver.close();
     }
 
-    template<typename Impl>
-    Result<void> begin(Driver_impl<Impl>& driver) noexcept {
-      return Impl::begin(driver);
+    template<typename Driver>
+    Result<void> begin(Driver& driver) noexcept {
+      return driver.begin();
     }
 
-    template<typename Impl>
-    Result<void> commit(Driver_impl<Impl>& driver) noexcept {
-      return Impl::commit(driver);
+    template<typename Driver>
+    Result<void> commit(Driver& driver) noexcept {
+      return driver.commit();
     }
 
-    template<typename Impl>
-    Result<void> rollback(Driver_impl<Impl>& driver) noexcept {
-      return Impl::rollback(driver);
+    template<typename Driver>
+    Result<void> rollback(Driver& driver) noexcept {
+      return driver.rollback();
     }
 
-    /* Returns Result<Stmt> */
-    template<typename Impl>
-    Result<Stmt_impl<Impl>> prepare(Driver_impl<Impl>& driver, std::string_view sql) noexcept {
-      return Impl::prepare(driver, sql);
+    template<typename Driver, typename String, typename Cb, typename ...Args>
+    Result<void> execute(Driver& driver, String&& sql, Cb&& cb, Args const&... args) noexcept {
+      return driver.execute(std::forward<String>(sql), std::forward<Cb>(cb), args...);
     }
 
-    template<typename Impl>
-    Result<void> reset(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt) noexcept {
-      return Impl::reset(driver, stmt);
+    template<typename Results, typename T>
+    Result<void> get_column(Results& results, size_t id, T& val) noexcept {
+      return results.get_column(id, val);
     }
 
-    template<typename Impl>
-    Result<void> finalize(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt) noexcept {
-      return Impl::finalize(driver, stmt);
-    }
-
-    template<typename Impl, typename ...T>
-    Result<void> bind(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt, int id, T const&... val) noexcept {
-      return Impl::bind(driver, stmt, id, val...);
-    }
-
-    template<typename Impl, typename ...T>
-    Result<void> bind(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt, std::string_view name, T const&... val) noexcept {
-      return Impl::bind(driver, stmt, name, val...);
-    }
-
-    template<typename Impl>
-    Result<Stmt_step> step(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt) noexcept {
-      return Impl::step(driver, stmt);
-    }
-
-    template<typename Impl, typename T>
-    Result<T> get_column(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt, int id, Column_type<T> c_type = column_type<T>) noexcept {
-      return Impl::get_column(driver, stmt, id, c_type);
-    }
-
-    template<typename Impl>
-    constexpr bool thread_safe = Impl::thread_safe;
-
-    template<typename Impl, size_t i = 0, typename Tuple = void>
-    Result<void> get_columns_(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt, Tuple& tuple) noexcept {
+    template<size_t i = 0, typename Results = void, typename Tuple = void>
+    Result<void> get_columns_(Results& results, Tuple& tuple) noexcept {
       if constexpr (i == std::tuple_size_v<Tuple>) {
-        return success();
+        return success;
       } else {
-        DLIB_TRY(col_data, (get_column<Impl>(driver, stmt, i, column_type<std::tuple_element_t<i, Tuple>>)));
-        std::get<i>(tuple) = std::move(col_data);
-        return get_columns_<Impl, i + 1>(driver, stmt, tuple);
+        DLIB_TRY((get_column(results, i, std::get<i>(tuple))));
+        return get_columns_<i + 1>(results, tuple);
       }
     }
 
-    template<typename Impl, int i = 0>
-    constexpr Result<void> bind_args_(Driver_impl<Impl>&, Stmt_impl<Impl>&) {
-      return success();
-    }
-
-    template<typename Impl, int i = 0, typename First, typename ...Rest>
-    Result<void> bind_args_(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt, First const& first, Rest const&... rest) {
-      DLIB_TRY((bind<Impl>(driver, stmt, i, first)));
-      return bind_args_<Impl, i + 1>(driver, stmt, rest...);
-    }
-
-    template<typename Impl, typename ...Columns, typename ...Args, typename Callback>
-    Result<void> execute_(Driver_impl<Impl>& driver, Stmt_impl<Impl>& stmt, Callback&& callback, Args&&... args) noexcept {
+    template<typename ...Columns, typename Driver, typename ...Args, typename Callback>
+    Result<void> execute_(Driver& driver, std::string_view sql, Callback&& callback, Args const&... args) noexcept {
       using Tuple = std::tuple<Columns...>;
       Tuple columns;
-      DLIB_TRY((reset<Impl>(driver, stmt)));
-      DLIB_TRY((bind_args_<Impl>(driver, stmt, std::forward<Args>(args)...)));
-      for (;;) {
-        DLIB_TRY(step_res, step<Impl>(driver, stmt));
-        switch (step_res) {
-        case Stmt_step::Data:
-        {
-          DLIB_TRY((get_columns_<Impl>(driver, stmt, columns)));
-          if constexpr (is_result<decltype(std::apply(callback, std::move(columns)))>) {
-            DLIB_TRY((std::apply(callback, std::move(columns))));
-          } else {
-            std::apply(callback, std::move(columns));
-          }
-          continue;
-        }
-        case Stmt_step::Done:
-          return success();
-        }
-      }
+      auto cb = [&columns, &callback](auto& results) noexcept -> Result<void> {
+        DLIB_TRY((get_columns_(results, columns)));
+        DLIB_TRY((std::apply(callback, columns)));
+        return success;
+      };
+
+      return execute(driver, sql, cb, args...);
     }
 
-    template<typename Pointer>
-    using Queries = Cache<std::string, std::string, Pointer_is<Pointer>>;
+    struct Closed {
+
+    };
+
+    constexpr Closed closed = Closed{};
   }
 
-  template<typename Impl, typename Pointer_>
-  class Db_ex final :
-    public Get_pointer_from<Pointer_> {
+  template<typename Driver>
+  class Db final {
   public:
-    using Driver = db_impl::Driver_impl<Impl>;
-    using Stmt = db_impl::Stmt_impl<Impl>;
-    using Pointer_arg = Pointer_;
-    using Pointer_to = Get_pointer_to<Pointer_arg, Db_ex>;
-    using Holder = Get_holder<Pointer_arg, Db_ex>;
+    Db() :
+      state_{ db_impl::closed } {
+
+    }
+    Db(Db const&) = delete;
+    Db(Db&& other) :
+      state_{ std::move(other.state_) } {
+      other.state_ = db_impl::closed;
+    }
+
+    Db& operator=(Db const&) = delete;
+    Db& operator=(Db&& other) noexcept {
+      close();
+      state_ = std::move(other.state_);
+      other.state_ = db_impl::closed;
+    }
+    ~Db() {
+      close();
+    }
+
+    Result<void> open(std::string_view location) noexcept {
+      if (!std::holds_alternative<db_impl::Closed>(state_)) {
+        return Errors::wrong_state;
+      }
+      Driver driver;
+      DLIB_TRY((db_impl::open(driver, location)));
+      state_ = std::move(driver);
+      return success;
+    }
+
+    Result<void> close() noexcept {
+      Driver* driver = std::get_if<Driver>(&state_);
+      if (driver == nullptr) {
+        return Errors::wrong_state;;
+      }
+      DLIB_TRY((db_impl::close(*driver)));
+      state_ = db_impl::closed;
+      return success;
+    }
 
     template<typename ...Columns, typename Query, typename ...Args, typename Callback>
-    Result<void> execute(Query query, Callback&& callback, Args const&... args) noexcept {
+    Result<void> execute(Query query, Callback&& callback, Args const& ... args) noexcept {
       return execute<Columns...>(query.query_string(), std::forward<Callback>(callback), args...);
-      
     }
 
     template<typename ...Columns, typename ...Args, typename Callback>
     Result<void> execute(std::string_view query, Callback&& callback, Args const& ... args) noexcept {
       static_assert(std::is_invocable_v<Callback, Columns...>);
-      DLIB_TRY(pooled, (get_stmt_(query)));
-      return db_impl::execute_<Impl, Columns...>(driver(), *pooled, std::forward<Callback>(callback), args...);
+      Driver* driver = std::get_if<Driver>(&state_);
+      if (driver == nullptr) {
+        return Errors::wrong_state;
+      }
+      return db_impl::execute_<Columns...>(*driver, query, std::forward<Callback>(callback), args...);
     }
 
     template<typename ...Columns, typename ...Args, typename Callback>
@@ -188,125 +156,42 @@ namespace dlib {
 
     template<typename Callback>
     Result<void> transaction(Callback&& cb) noexcept {
-      DLIB_TRY((db_impl::begin<Impl>(driver())));
+      Driver* driver = std::get_if<Driver>(&state_);
+      if (driver == nullptr) {
+        return Errors::wrong_state;;
+      }
+      DLIB_TRY((db_impl::begin(*driver)));
       if constexpr (std::is_same_v<void, decltype(cb(*this))>) {
         cb(*this);
-        return db_impl::commit<Impl>(driver());
+        return db_impl::commit(*driver);
       } else {
         auto res = cb(*this);
         if (!res) {
-          DLIB_TRY((db_impl::rollback<Impl>(driver())));
+          DLIB_TRY((db_impl::rollback(*driver)));
         } else {
-          DLIB_TRY((db_impl::commit<Impl>(driver())));
+          DLIB_TRY((db_impl::commit(*driver)));
         }
-        return dlib::success();
+        return dlib::success;
       }
     }
 
-    Driver& driver() noexcept {
-      return driver_;
-    }
-    Driver const& driver() const noexcept {
-      return driver_;
-    }
-
-    static Result<Db_ex> make(std::string_view location) {
-      DLIB_TRY(driver, (db_impl::open<Impl>(location)));
-      return Db_ex(std::move(driver));
-    }
-
-    ~Db_ex() {
-      for (auto&[name, stmt] : stmts_) {
-        db_impl::finalize<Impl>(driver_, stmt);
+    Result<Driver*> driver() noexcept {
+      Driver* driver = std::get_if<Driver>(&state_);
+      if (driver == nullptr) {
+        return Errors::wrong_state;
       }
-
-      db_impl::close<Impl>(driver_);
+      return driver;
     }
+
+    Result<const Driver*> driver() const noexcept {
+      const Driver* driver = std::get_if<Driver>(&state_);
+      if (driver == nullptr) {
+        return Errors::wrong_state;
+      }
+      return driver;
+    }
+
   private:
-    Db_ex(Driver&& driver) noexcept :
-      driver_(std::move(driver)) {
-
-    }
-
-    Result<Stmt*> get_stmt_(std::string_view query) noexcept {
-      auto found = stmts_.find(query, std::hash<std::string_view>(), std::equal_to<>());
-
-      if (found == stmts_.end()) {
-        /*If it doesn't exist yet, make it*/
-        DLIB_TRY(new_stmt, (db_impl::prepare<Impl>(driver_, query)));
-        found = stmts_.emplace(query, std::move(new_stmt)).first;
-      }
-      return &found->second;
-    }
-
-    Driver driver_;
-    boost::unordered_map<std::string, Stmt, std::hash<std::string>, std::equal_to<>> stmts_;
+    std::variant<db_impl::Closed, Driver> state_;
   };
-
-  template<typename Driver, typename ...Args>
-  using Db = Db_ex < Driver, 
-    Get_arg_defaulted<Pointer_is, Raw_pointer, Args...>>;
-
-  template<typename Returning, typename ...Columns, typename ...Db_args, typename Name, typename ...Args, typename Callback>
-  Result<Returning> db_get_cb(
-      Db_ex<Db_args...>& db,
-      Name&& name,
-      Callback&& cb,
-      Args&&... args) noexcept {
-    std::optional<Returning> returning{ std::nullopt };
-
-    const auto cb = [&cb, &returning](auto... in) noexcept {
-      returning = cb(std::move(in)...);
-    };
-
-    DLIB_TRY((db.execute<Columns...>(std::forward<Name>(name), cb, std::forward<Args>(args)...)));
-
-    if (returning) {
-      return returning.value();
-    } else {
-      return std::errc::bad_address;
-    }
-  }
-
-  template<typename Returning, typename ...Columns, typename ...Db_args, typename Name, typename ...Args>
-  Result<Returning> db_get(
-      Db_ex<Db_args...>& db,
-      Name&& name,
-      Args&&... args) noexcept {
-    const auto cb = [](auto... in) {
-      return Returning{ std::move(in)... };
-    };
-
-    return db_get_cb<Returning, Columns...>(db, std::forward<Name>(name), cb, std::forward<Args>(args)...);
-  }
-
-  template<typename Returning, typename ...Columns, typename ...Db_args, typename Name, typename ...Args, typename Callback>
-  Result<std::vector<Returning>> db_get_all_cb(
-      Db_ex<Db_args...>& db,
-      Name&& name,
-      Callback&& cb,
-      Args&& ...args) noexcept {
-    std::vector<Returning> returning;
-
-    const auto callback = [&cb, &returning](Columns&&... columns) noexcept {
-      returning.emplace_back(cb(std::move(columns)...));
-    };
-
-    DLIB_TRY((db.execute<Columns...>(std::forward<Name>(name), callback, std::forward<Args>(args)...)));
-
-    return returning;
-  }
-
-  template<typename Returning, typename ...Columns, typename ...Db_args, typename Name, typename ...Args>
-  Result<std::vector<Returning>> db_get_all(
-      Db_ex<Db_args...>& db,
-      Name&& name,
-      Args&& ...args) noexcept {
-
-    const auto cb = [](auto... in) {
-      return Returning{ std::move(in)... };
-    }
-
-    return db_get_all_cb<Returning, Columns...>(db, std::forward<Name>(name), cb, std::forward<Args>(args)...);
-  }
 }

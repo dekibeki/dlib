@@ -12,7 +12,8 @@ namespace {
     std::string_view{"Success"},
     std::string_view{"The container is empty"},
     std::string_view{"Could not find what was being searched for"},
-    std::string_view{"The buffer is smaller then is needed/was expected"}
+    std::string_view{"The buffer is smaller then is needed/was expected"},
+    std::string_view{"The object is in the wrong state for this action"}
   };
 
   struct Dlib_error_category final :

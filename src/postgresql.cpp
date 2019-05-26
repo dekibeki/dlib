@@ -2,598 +2,166 @@
 
 #include <libpq-fe.h>
 
-/* DRIVER DESTRUCTOR */
+namespace {
+  enum class Postgresql_error : int {
+    ok = 0,
+    error,
+    is_null
+  };
 
-void dlib::postgresql_impl::Driver_destructor::operator()(void* ptr) const noexcept {
-  PGconn* connection = static_cast<PGconn*>(ptr);
-  if (connection != nullptr) {
+  struct Postgresql_error_category final
+    : public std::error_category {
+    virtual const char* name() const noexcept final {
+      return "postgresql";
+    }
+    virtual std::string message(int i) const noexcept final {
+      return "unknown";
+    }
+  };
+
+  const Postgresql_error_category postgresql_error_category;
+
+  std::error_code make_error_code(Postgresql_error err) noexcept {
+    return std::error_code{ static_cast<int>(err), postgresql_error_category };
+  }
+}
+
+namespace std {
+  template<>
+  struct is_error_code_enum<::Postgresql_error> :
+    public ::std::true_type {
+
+  };
+}
+
+void dlib::postgresql_impl::Result_destructor::operator()(void* result) const noexcept {
+  PQclear(static_cast<PGresult*>(result));
+}
+
+dlib::postgresql_impl::Results::Results(void* result) noexcept :
+  on_{ 0 },
+  max_{ PQntuples(static_cast<PGresult*>(result)) },
+  results_{ result } {
+
+}
+
+dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int64_t& returning) noexcept {
+  PGresult* result = static_cast<PGresult*>(results_.get());
+  if (PQgetisnull(result, on_, id)) {
+    return Postgresql_error::is_null;
+  }
+  returning = std::stoll(PQgetvalue(result, on_, id));
+  return success;
+}
+
+dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int32_t& returning) noexcept {
+  PGresult* result = static_cast<PGresult*>(results_.get());
+  if (PQgetisnull(result, on_, id)) {
+    return Postgresql_error::is_null;
+  }
+  returning = std::stol(PQgetvalue(result, on_, id));
+  return success;
+}
+
+dlib::Postgresql_driver::Postgresql_driver() noexcept :
+  connection_{ nullptr } {
+
+}
+
+dlib::Result<void> dlib::Postgresql_driver::open(std::string_view location) noexcept {
+  std::string zero_terminated{ location };
+  return open(zero_terminated.c_str());
+}
+
+dlib::Result<void> dlib::Postgresql_driver::open(std::string const& location) noexcept {
+  return open(location.c_str());
+}
+
+dlib::Result<void> dlib::Postgresql_driver::open(const char* location) noexcept {
+  PGconn* connection = PQconnectdb(location);
+  if (connection == nullptr) {
+    return Postgresql_error::error;
+  } else if (PQstatus(connection) != CONNECTION_OK) {
     PQfinish(connection);
-  }
-}
-
-/* STMT DESTRUCTOR */
-
-void dlib::postgresql_impl::Stmt_destructor::operator()(void* ptr) const noexcept {
-  PGresult* result = static_cast<PGresult*>(ptr);
-
-  if (result != nullptr) {
-    PQclear(result);
-  }
-}
-
-/* DRIVER IMPL */
-
-dlib::postgresql_impl::Driver_impl::Driver_impl() noexcept :
-  connection{ nullptr } {
-
-}
-
-/* STMT IMPL */
-
-dlib::postgresql_impl::Stmt_impl::Stmt_impl() :
-  sql{},
-  index_binds{},
-  named_binds{},
-  result{ nullptr } {
-
-}
-
-dlib::Result<dlib::postgresql_impl::Impl::Driver> dlib::postgresql_impl::Impl::open(std::string_view location) noexcept {
-
-  //we need location null terminated :(
-  std::string null_terminated_location{ location };
-  
-  PGconn* connection_ = PQconnectdb(null_terminated_location.c_str());
-
-
-
-  Driver returning;
-
-
-
-  if (PQstatus(
-    connection_) != CONNECTION_OK) {
-    log_.critical(
-      "Could not connection to postgresql, {}",
-      PQerrorMessage(
-        connection_));
-
-    return -1;
+    return Postgresql_error::error;
   } else {
-    return 0;
+    connection_ = connection;
+    return dlib::success;
   }
+}
+
+dlib::Result<void> dlib::Postgresql_driver::close() noexcept {
+  PQfinish(static_cast<PGconn*>(connection_));
+  connection_ = nullptr;
+  return success;
+}
+
+dlib::Result<void> dlib::Postgresql_driver::begin() noexcept {
+  PGresult* res = PQexec(static_cast<PGconn*>(connection_), "BEGIN;");
+  if (res == nullptr || PQresultStatus(res) != PGRES_COMMAND_OK) {
+    PQclear(res);
+    return Postgresql_error::error;
+  } else {
+    PQclear(res);
+    return success;
+  }
+}
+
+dlib::Result<void> dlib::Postgresql_driver::commit() noexcept {
+  PGresult* res = PQexec(static_cast<PGconn*>(connection_), "COMMIT;");
+  if (res == nullptr || PQresultStatus(res) != PGRES_COMMAND_OK) {
+    PQclear(res);
+    return Postgresql_error::error;
+  } else {
+    PQclear(res);
+    return success;
+  }
+}
+
+dlib::Result<void> dlib::Postgresql_driver::rollback() noexcept {
+  PGresult* res = PQexec(static_cast<PGconn*>(connection_), "ROLLBACK;");
+  if (res == nullptr || PQresultStatus(res) != PGRES_COMMAND_OK) {
+    PQclear(res);
+    return Postgresql_error::error;
+  } else {
+    PQclear(res);
+    return success;
+  }
+}
+
+const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>&, const char* str) noexcept {
+  return str;
+}
+
+const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>&, std::string const& str) noexcept {
+  return str.c_str();
+}
+
+const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>& temps, std::string_view str) noexcept {
+  temps.emplace_back(str);
+  return temps.back().c_str();
+}
+
+void dlib::Postgresql_driver::bind_args_(std::vector<const char*>&, std::vector<std::string>&) noexcept {
 
 }
 
-int db::details::postgresql::prepare(
-  Db_base& me_,
-  const char* name,
-  const char* sql,
-  Stmt_& stmt)
-{
-  stmt = name;
-
-  Db_impl<Postgresql_db>& me = static_cast<Db_impl<Postgresql_db>&>(
-    me_);
-
-  Scoped_pgres res;
-
-  if((res = PQprepare(
-    me.connection_,
-    name,
+dlib::Result<dlib::postgresql_impl::Results> dlib::Postgresql_driver::exec_(const char* sql, std::vector<const char*> const& args) noexcept {
+  PGresult* result = PQexecParams(
+    static_cast<PGconn*>(connection_),
     sql,
-    0,
-    nullptr)) == nullptr
-    || PQresultStatus(
-      res) != PGRES_COMMAND_OK)
-  {
-    me_.log_.critical(
-      "Could not prepare statement {}, ({}): {}",
-      name,
-      sql,
-      PQresultErrorMessage(
-        res));
-
-    return -1;
-  }
-  else
-  {
-    return 0;
-  }
-}
-
-void db::details::postgresql::finalize(
-  Db_base&,
-  Stmt_&)
-{
-  //do nothing, postgresql can't finalize stmts without some shifty sql stuff
-}
-
-void db::details::postgresql::reset(
-  Db_base&,
-  Stmt_&)
-{
-  //do nothing, postgresql doesn't need to reset
-}
-
-db::details::postgresql::Stmt::Stmt() :
-  binds_(),
-  row_number_(
-    -1)
-{
-
-}
-
-int db::details::postgresql::Stmt::bind_static(
-  int id,
-  const char* v)
-{
-  binds_[id] = v;
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind_static(
-  int id,
-  const char* v,
-  size_t n)
-{
-  binds_[id].assign(
-    v,
-    n);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind_static(
-  int id,
-  const unsigned char* v)
-{
-  binds_[id] = reinterpret_cast<const char*>(
-    v);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind_static(
-  int id,
-  const unsigned char* v,
-  size_t n)
-{
-  binds_[id].assign(
-    reinterpret_cast<const char*>(
-      v),
-    n);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  const char* v)
-{
-  binds_[id] = v;
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  const char* v,
-  size_t n)
-{
-  binds_[id].assign(
-    v,
-    n);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  const unsigned char* v)
-{
-  binds_[id] = reinterpret_cast<const char*>(
-    v);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  const unsigned char* v,
-  size_t n)
-{
-  binds_[id].assign(
-    reinterpret_cast<const char*>(
-      v),
-    n);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  uint8_t v)
-{
-  binds_[id] = std::to_string(
-    v);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  int8_t v)
-{
-  binds_[id] = std::to_string(
-    v);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  uint16_t v)
-{
-  binds_[id] = std::to_string(
-    v);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  int16_t v)
-{
-  binds_[id] = std::to_string(
-    v);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  uint32_t v)
-{
-  binds_[id] = std::to_string(
-    v);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  int32_t v)
-{
-  binds_[id] = std::to_string(
-    v);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  uint64_t v)
-{
-  binds_[id] = std::to_string(
-    v);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::bind(
-  int id,
-  int64_t v)
-{
-  binds_[id] = std::to_string(
-    v);
-
-  return 0;
-}
-
-db::Step_value db::details::postgresql::Stmt::step(
-  )
-{
-  if (result_ == nullptr)
-  {
-    size_t max_id;
-
-    if (binds_.empty())
-    {
-      max_id = 0;
-    }
-    else
-    {
-      max_id = binds_.rbegin()->first;
-    }
-
-    std::vector<const char*> bind_list(
-      max_id,
-      "");
-
-    auto bind_end = binds_.end();
-
-    for (auto bind_iter = binds_.begin();
-    bind_iter != bind_end;
-      ++bind_iter)
-    {
-      bind_list[bind_iter->first - 1] = bind_iter->second.c_str();
-    }
-
-    result_ = PQexecPrepared(
-      this->db_->connection_,
-      this->name_.c_str(),
-      static_cast<int>(
-        bind_list.size()),
-      bind_list.data(),
-      nullptr,
-      nullptr,
-      0);
-
-    if (result_ == nullptr
-      || PQresultStatus(
-        result_) == PGRES_FATAL_ERROR)
-    {
-      this->db_->log_.critical(
-        "PQexecPrepared failed: {}",
-        PQresultErrorMessage(
-          result_));
-
-      return step_error;
-    }
-
-    tuple_count_ = PQntuples(
-      result_);
-  }
-
-  if (row_number_ + 1 >= tuple_count_)
-  {
-    return step_done;
-  }
-
-  ++row_number_;
-
-  return step_row;
-}
-
-int db::details::postgresql::Stmt::get_column(
-  int id,
-  uint8_t& v) const
-{
-  v = std::stoi(
-    PQgetvalue(
-      result_,
-      row_number_,
-      id));
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::get_column(
-  int id,
-  int8_t& v) const
-{
-  v = std::stoi(
-    PQgetvalue(
-      result_,
-      row_number_,
-      id));
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::get_column(
-  int id,
-  uint16_t& v) const
-{
-  v = std::stoi(
-    PQgetvalue(
-      result_,
-      row_number_,
-      id));
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::get_column(
-  int id,
-  int16_t& v) const
-{
-  v = std::stoi(
-    PQgetvalue(
-      result_,
-      row_number_,
-      id));
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::get_column(
-  int id,
-  uint32_t& v) const
-{
-  v = std::stoi(
-    PQgetvalue(
-      result_,
-      row_number_,
-      id));
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::get_column(
-  int id,
-  int32_t& v) const
-{
-  v = std::stoi(
-    PQgetvalue(
-      result_,
-      row_number_,
-      id));
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::get_column(
-  int id,
-  uint64_t& v) const
-{
-  v = std::stoi(
-    PQgetvalue(
-      result_,
-      row_number_,
-      id));
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::get_column(
-  int id,
-  int64_t& v) const
-{
-  v = std::stoi(
-    PQgetvalue(
-      result_,
-      row_number_,
-      id));
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::get_column(
-  int id,
-  const char*& v) const
-{
-  v = PQgetvalue(
-    result_,
-    row_number_,
-    id);
-
-  return 0;
-}
-
-int db::details::postgresql::Stmt::get_column(
-  int id,
-  const unsigned char*& v) const
-{
-  reinterpret_cast<const char*&>(
-    v) = PQgetvalue(
-      result_,
-      row_number_,
-      id);
-
-  return 0;
-}
-
-db::details::Db_impl<db::Postgresql_db>::Db_impl(
-  std::string const& log_name,
-  spdlog::sink_ptr const& sink,
-  cache::Cache_base::Ptr const& cache) :
-  Db_impl_base(
-    log_name,
-    sink,
-    cache)
-{
-
-}
-
-int db::details::Db_impl<db::Postgresql_db>::open(
-  const char* db_location)
-{
-  connection_ = PQconnectdb(
-    db_location);
-
-  if (PQstatus(
-    connection_) != CONNECTION_OK)
-  {
-    log_.critical(
-      "Could not connection to postgresql, {}",
-      PQerrorMessage(
-        connection_));
-
-    return -1;
-  }
-  else
-  {
-    return 0;
-  }
-}
-
-int db::details::Db_impl<db::Postgresql_db>::stmt_get(
-  const char* name,
-  Stmt& out)
-{
-  postgresql::Stmt_ stmt;
-
-  if (Db_impl_base::stmt_get(
-    name,
-    stmt) != 0)
-  {
-    log_.critical(
-      "Could not get stmt {}",
-      name);
-
-    return -1;
-  }
-
-  out.db_ = this;
-  out.name_ = name;
-  if (out.result_ != nullptr)
-  {
-    PQclear(
-      out.result_);
-
-    out.result_ = nullptr;
-  }
-
-  return 0;
-}
-
-int db::details::Db_impl<db::Postgresql_db>::begin()
-{
-  postgresql::Scoped_pgres result = PQexec(
-    connection_,
-    "BEGIN;");
+    static_cast<int>(args.size()),
+    nullptr,
+    args.data(),
+    nullptr,
+    nullptr,
+    0);
 
   if (result == nullptr
     || PQresultStatus(
-      result) != PGRES_COMMAND_OK)
-  {
-    return -1;
+      result) == PGRES_FATAL_ERROR) {
+    return Postgresql_error::error;
   }
 
-  return 0;
-}
-
-int db::details::Db_impl<db::Postgresql_db>::commit()
-{
-  postgresql::Scoped_pgres result = PQexec(
-    connection_,
-    "COMMIT;");
-
-  if (result == nullptr
-    || PQresultStatus(
-      result) != PGRES_COMMAND_OK)
-  {
-    return -1;
-  }
-
-  return 0;
-}
-
-int db::details::Db_impl<db::Postgresql_db>::rollback()
-{
-  postgresql::Scoped_pgres result = PQexec(
-    connection_,
-    "ROLLBACK;");
-
-  if (result == nullptr
-    || PQresultStatus(
-      result) != PGRES_COMMAND_OK)
-  {
-    return -1;
-  }
-
-  return 0;
+  return postgresql_impl::Results{ result };
 }

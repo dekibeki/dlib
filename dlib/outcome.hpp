@@ -31,8 +31,8 @@ namespace dlib {
 
   bool isSuccess(ResultVal res);
 
-  constexpr auto success() noexcept {
-    return outcome::success();
+  constexpr auto success noexcept {
+    return outcome::success;
   }
 
   template<typename T>
@@ -77,6 +77,7 @@ namespace dlib {
     empty,
     not_found,
     buffer_too_small,
+    wrong_state,
   };
 
   std::error_code make_error_code(Errors val) noexcept;
@@ -129,10 +130,15 @@ namespace dlib {
       outcome_impl::Error_code_data> val_;
   };
 
+  namespace outcome_impl {
+    struct Success {};
+    constexpr Success success;
+  }
+
   template<>
   class Result<void> {
   public:
-    constexpr Result(std::nullopt_t) noexcept :
+    constexpr Result(outcome_impl::Success) noexcept :
       val_{ std::nullopt } {
 
     }
@@ -174,9 +180,7 @@ namespace dlib {
     std::optional<outcome_impl::Error_code_data> val_;
   };
 
-  constexpr Result<void> success() noexcept {
-    return { std::nullopt };
-  }
+  constexpr Result<void> success{ outcome_impl::success };
 
   namespace outcome_impl {
     template<typename T>
@@ -194,6 +198,20 @@ namespace dlib {
 
   template<typename T>
   constexpr bool is_result = outcome_impl::Is_result_impl<T>::value;
+
+  template<typename Cb>
+  constexpr auto ensure_is_result(Cb&& cb) noexcept {
+    using Return_type = std::invoke_result_t<Cb>;
+
+    if constexpr (is_result<Return_type>) {
+      return cb();
+    } else if constexpr (std::is_same_v<void, Return_type>) {
+      cb();
+      return success;
+    } else {
+      return Result<Return_type>{ cb() };
+    }
+  }
 }
 
 namespace std {
@@ -208,18 +226,16 @@ namespace std {
 
 #define DLIB_CONCAT(a, b) DLIB_CONCAT_(a,b)
 
-
-
 #define DLIB_TRY1(stmt) \
   do {\
-    auto res = (stmt);\
+    auto res = ::dlib::ensure_is_result([&](){return (stmt); }); \
     if(res.failure()) {\
       return res.error(); \
     }\
   } while(false)
 
 #define DLIB_TRY2(var_name, stmt) \
-  auto DLIB_CONCAT(var_name,_result_temporary) = (stmt); \
+  auto DLIB_CONCAT(var_name,_result_temporary) = ::dlib::ensure_is_result([&](){ return (stmt);}); \
   if(DLIB_CONCAT(var_name,_result_temporary).failure()) {\
     return DLIB_CONCAT(var_name,_result_temporary).error(); \
   }\

@@ -8,16 +8,36 @@
 
 namespace dlib
 {
-  struct Sqlite_db;
-
   namespace sqlite_impl
   {
     Result<int> name_to_index(void* stmt, std::string_view name) noexcept;
 
     struct Impl {
     public:
-      using Driver = void*;
-      using Stmt = void*;
+      struct Driver {
+        constexpr Driver() noexcept :
+          db{ nullptr } {
+
+        }
+        Driver(Driver const&) = delete;
+        constexpr Driver(Driver&& other) noexcept :
+          db{ std::move(other.db) } {
+          other.db = nullptr;
+        }
+
+        Driver& operator=(Driver const&) = delete;
+        constexpr Driver& operator=(Driver&& other) noexcept {
+          db = other.db;
+          other.db = nullptr;
+          return *this;
+        }
+        void* db;
+      };
+      struct Stmt {
+        bool done_initial;
+        std::vector<void*> stmts;
+        Stmt() noexcept;
+      };
 
       static Result<Driver> open(std::string_view location) noexcept;
       static Result<void> close(Driver& driver) noexcept;
@@ -57,7 +77,5 @@ namespace dlib
     };
   }
   using Sqlite_impl = sqlite_impl::Impl;
-  template<typename Pointer>
-  using Sqlite_ex = Db_ex<Sqlite_impl, Pointer>;
   using Sqlite = Db<Sqlite_impl>;
 }
