@@ -63,6 +63,10 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int32_t
   return success;
 }
 
+bool dlib::postgresql_impl::Results::is_null_(size_t id) noexcept {
+  return PQgetisnull(static_cast<PGresult*>(results_.get()), on_, id) != 0;
+}
+
 dlib::Postgresql_driver::Postgresql_driver() noexcept :
   connection_{ nullptr } {
 
@@ -139,6 +143,41 @@ const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>&, std::s
 
 const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>& temps, std::string_view str) noexcept {
   temps.emplace_back(str);
+  return temps.back().c_str();
+}
+
+namespace {
+  char to_hex_digit(std::byte b) noexcept {
+    switch (std::to_integer<uint8_t>(b)) {
+    case 0: return '0';
+    case 1: return '1';
+    case 2: return '2';
+    case 3: return '3';
+    case 4: return '4';
+    case 5: return '5';
+    case 6: return '6';
+    case 7: return '7';
+    case 8: return '8';
+    case 9: return '9';
+    case 10: return 'A';
+    case 11: return 'B';
+    case 12: return 'C';
+    case 13: return 'D';
+    case 14: return 'E';
+    case 15: return 'F';
+    default:
+      return '\0';
+    }
+  }
+}
+
+const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>& temps, Blob const& blob) noexcept {
+  temps.emplace_back("\\x");
+  temps.back().reserve(2 + blob.size());
+  for (std::byte byte : blob) {
+    temps.back().push_back(to_hex_digit((byte >> 4) & std::byte{ 0x0F }));
+    temps.back().push_back(to_hex_digit(byte & std::byte{ 0x0F }));
+  }
   return temps.back().c_str();
 }
 

@@ -16,6 +16,16 @@ namespace dlib {
       Results(void*) noexcept;
       Result<void> get_column(size_t id, int64_t&) noexcept;
       Result<void> get_column(size_t id, int32_t&) noexcept;
+      template<typename T>
+      Result<void> get_column(size_t id, Nullable<T>& returning) noexcept {
+        if (is_null(id)) {
+          returning = std::nullopt;
+          return success;
+        }
+
+        returning = T{};
+        return get_column(id, *returning);
+      }
       template<typename Cb>
       Result<void> run_callbacks(Cb&& cb) noexcept {
         for (on_ = 0; on_ < max_; ++on_) {
@@ -24,6 +34,7 @@ namespace dlib {
         return success;
       }
     private:
+      bool is_null_(size_t id) noexcept;
       int on_;
       int max_;
       std::unique_ptr<void, Result_destructor> results_;
@@ -71,6 +82,7 @@ namespace dlib {
     static const char* bind_arg_(std::vector<std::string>&, const char*) noexcept;
     static const char* bind_arg_(std::vector<std::string>&, std::string const&) noexcept;
     static const char* bind_arg_(std::vector<std::string>&, std::string_view) noexcept;
+    static const char* bind_arg_(std::vector<std::string>&, Blob const&) noexcept;
 
     void bind_args_(std::vector<const char*>& args, std::vector<std::string>& temps) noexcept;
 

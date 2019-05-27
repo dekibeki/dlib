@@ -171,7 +171,7 @@ namespace dlib {
         } else {
           DLIB_TRY((db_impl::commit(*driver)));
         }
-        return dlib::success;
+        return res;
       }
     }
 
