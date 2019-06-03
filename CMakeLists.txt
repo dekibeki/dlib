@@ -20,6 +20,7 @@ add_library(dlib
   ${dlibSrc}/arrays.cpp
   ${dlibSrc}/cache.cpp
   ${dlibSrc}/db.cpp
+  ${dlibSrc}/dummy_db.cpp
   ${dlibSrc}/finder_interface.cpp
   ${dlibSrc}/interface.cpp
   ${dlibSrc}/iterators.cpp
@@ -45,6 +46,7 @@ add_executable(dlibTest
   ${dlibTest}/test_arrays.cpp
   ${dlibTest}/test_cache.cpp
   ${dlibTest}/test_db.cpp
+  ${dlibTest}/test_dummy_db.cpp
   ${dlibTest}/test_finder_interface.cpp
   ${dlibTest}/test_interface.cpp
   ${dlibTest}/test_iterators.cpp

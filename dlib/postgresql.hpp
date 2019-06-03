@@ -18,7 +18,7 @@ namespace dlib {
       Result<void> get_column(size_t id, int32_t&) noexcept;
       template<typename T>
       Result<void> get_column(size_t id, Nullable<T>& returning) noexcept {
-        if (is_null(id)) {
+        if (is_null_(id)) {
           returning = std::nullopt;
           return success;
         }
