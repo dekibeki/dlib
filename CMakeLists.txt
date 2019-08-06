@@ -15,6 +15,8 @@ find_package(Boost
   REQUIRED 
   COMPONENTS unit_test_framework)
 
+find_package(unofficial-date CONFIG REQUIRED)
+
 add_library(dlib
   ${dlibSrc}/args.cpp
   ${dlibSrc}/arrays.cpp
@@ -117,6 +119,8 @@ if(${PostgreSQL_FOUND})
   target_link_libraries(dlib_postgresql
     PUBLIC
     dlib
+	unofficial::date::tz
+	unofficial::date::date
     PRIVATE
     ${PostgreSQL_LIBRARIES})
 

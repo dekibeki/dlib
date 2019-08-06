@@ -1,8 +1,11 @@
 #pragma once
 
 #include <vector>
+#include <deque>
 #include <dlib/db.hpp>
 #include <unordered_map>
+
+#include <date/tz.h>
 
 namespace dlib {
   namespace postgresql_impl { 
@@ -16,6 +19,7 @@ namespace dlib {
       Results(void*) noexcept;
       Result<void> get_column(size_t id, int64_t&) noexcept;
       Result<void> get_column(size_t id, int32_t&) noexcept;
+      Result<void> get_column(size_t id, std::chrono::system_clock::time_point&) noexcept;
       template<typename T>
       Result<void> get_column(size_t id, Nullable<T>& returning) noexcept {
         if (is_null_(id)) {
@@ -65,7 +69,7 @@ namespace dlib {
     }
     template<typename Cb, typename ...Args>
     Result<void> execute(const char* sql, Cb&& cb, Args const& ... args) noexcept {
-      std::vector<std::string> temps;
+      Binding_temps temps;
       std::vector<const char*> args_vec;
       bind_args_(args_vec, temps, args...);
 
@@ -74,22 +78,25 @@ namespace dlib {
     }
     
   private:
+    using Binding_temps = std::deque<std::string>;
+
     template<typename T>
-    static const char* bind_arg_(std::vector<std::string>& temps, T const& t) noexcept {
+    static const char* bind_arg_(Binding_temps& temps, T const& t) noexcept {
       temps.emplace_back(std::to_string(t));
       return temps.back().c_str();
     }
-    static const char* bind_arg_(std::vector<std::string>&, const char*) noexcept;
-    static const char* bind_arg_(std::vector<std::string>&, std::string const&) noexcept;
-    static const char* bind_arg_(std::vector<std::string>&, std::string_view) noexcept;
-    static const char* bind_arg_(std::vector<std::string>&, Blob const&) noexcept;
+    static const char* bind_arg_(Binding_temps&, const char*) noexcept;
+    static const char* bind_arg_(Binding_temps&, std::string const&) noexcept;
+    static const char* bind_arg_(Binding_temps&, std::string_view) noexcept;
+    static const char* bind_arg_(Binding_temps&, Blob const&) noexcept;
+    static const char* bind_arg_(Binding_temps&, std::chrono::system_clock::time_point const&) noexcept;
 
-    void bind_args_(std::vector<const char*>& args, std::vector<std::string>& temps) noexcept;
+    void bind_args_(std::vector<const char*>& args, Binding_temps&) noexcept;
 
     Result<postgresql_impl::Results> exec_(const char* sql, std::vector<const char*> const& args) noexcept;
 
     template<typename First, typename ...Rest>
-    void bind_args_(std::vector<const char*>& args, std::vector<std::string>& temps, First const& first, Rest const& ... rest) noexcept {
+    void bind_args_(std::vector<const char*>& args, Binding_temps& temps, First const& first, Rest const& ... rest) noexcept {
       args.emplace_back(bind_arg_(temps, first));
       bind_args_(args, temps, rest...);
     }

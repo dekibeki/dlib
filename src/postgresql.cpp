@@ -63,6 +63,20 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int32_t
   return success;
 }
 
+dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::chrono::system_clock::time_point& returning) noexcept {
+  PGresult* result = static_cast<PGresult*>(results_.get());
+  if (PQgetisnull(result, on_, id)) {
+    return Postgresql_error::is_null;
+  }
+
+  std::stringstream sstream;
+  
+  sstream << PQgetvalue(result, on_, id);
+  date::from_stream(sstream, "%F %T", returning);
+
+  return dlib::success;
+}
+
 bool dlib::postgresql_impl::Results::is_null_(size_t id) noexcept {
   return PQgetisnull(static_cast<PGresult*>(results_.get()), on_, id) != 0;
 }
@@ -133,15 +147,15 @@ dlib::Result<void> dlib::Postgresql_driver::rollback() noexcept {
   }
 }
 
-const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>&, const char* str) noexcept {
+const char* dlib::Postgresql_driver::bind_arg_(Binding_temps&, const char* str) noexcept {
   return str;
 }
 
-const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>&, std::string const& str) noexcept {
+const char* dlib::Postgresql_driver::bind_arg_(Binding_temps&, std::string const& str) noexcept {
   return str.c_str();
 }
 
-const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>& temps, std::string_view str) noexcept {
+const char* dlib::Postgresql_driver::bind_arg_(Binding_temps& temps, std::string_view str) noexcept {
   temps.emplace_back(str);
   return temps.back().c_str();
 }
@@ -171,7 +185,7 @@ namespace {
   }
 }
 
-const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>& temps, Blob const& blob) noexcept {
+const char* dlib::Postgresql_driver::bind_arg_(Binding_temps& temps, Blob const& blob) noexcept {
   temps.emplace_back("\\x");
   temps.back().reserve(2 + blob.size());
   for (std::byte byte : blob) {
@@ -181,7 +195,16 @@ const char* dlib::Postgresql_driver::bind_arg_(std::vector<std::string>& temps, 
   return temps.back().c_str();
 }
 
-void dlib::Postgresql_driver::bind_args_(std::vector<const char*>&, std::vector<std::string>&) noexcept {
+const char* dlib::Postgresql_driver::bind_arg_(Binding_temps& temps, std::chrono::system_clock::time_point const& time) noexcept {
+  std::stringstream sstream;
+
+  date::to_stream(sstream, "%F %T", time);
+
+  temps.emplace_back(sstream.str());
+  return temps.back().c_str();
+}
+
+void dlib::Postgresql_driver::bind_args_(std::vector<const char*>&, Binding_temps&) noexcept {
 
 }
 
