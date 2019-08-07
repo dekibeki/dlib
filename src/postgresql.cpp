@@ -77,6 +77,21 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::ch
   return dlib::success;
 }
 
+dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::chrono::system_clock::duration& returning) noexcept {
+  PGresult* result = static_cast<PGresult*>(results_.get());
+  if (PQgetisnull(result, on_, id)) {
+    return Postgresql_error::is_null;
+  }
+
+  std::stringstream sstream;
+
+  sstream << PQgetvalue(result, on_, id);
+
+  date::from_stream(sstream, "%5H:%M:%S", returning);
+
+  return dlib::success;
+}
+
 bool dlib::postgresql_impl::Results::is_null_(size_t id) noexcept {
   return PQgetisnull(static_cast<PGresult*>(results_.get()), on_, id) != 0;
 }
@@ -199,6 +214,15 @@ const char* dlib::Postgresql_driver::bind_arg_(Binding_temps& temps, std::chrono
   std::stringstream sstream;
 
   date::to_stream(sstream, "%F %T", time);
+
+  temps.emplace_back(sstream.str());
+  return temps.back().c_str();
+}
+
+const char* dlib::Postgresql_driver::bind_arg_(Binding_temps& temps, std::chrono::system_clock::duration const& duration) noexcept {
+  std::stringstream sstream;
+
+  date::to_stream(sstream, "%T", duration);
 
   temps.emplace_back(sstream.str());
   return temps.back().c_str();

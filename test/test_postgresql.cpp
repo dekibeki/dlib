@@ -44,3 +44,32 @@ BOOST_AUTO_TEST_CASE(timestamps) {
 
   BOOST_TEST((!!db.template execute<std::chrono::system_clock::time_point>(select_from_table, cb)));
 }
+
+BOOST_AUTO_TEST_CASE(intervals) {
+  dlib::Postgresql_db db;
+
+  constexpr auto create_table =
+    "CREATE TABLE Test("
+    "id INTEGER NOT NULL PRIMARY KEY,"
+    "data INTERVAL NOT NULL);";
+
+  BOOST_TEST((!!db.open(connection_string)));
+
+  BOOST_TEST((!!db.execute(create_table, []() {})));
+
+  constexpr auto insert_into_table =
+    "INSERT INTO Test(id,data) VALUES ($1,$2);";
+
+  const std::chrono::system_clock::duration inserting{ 5000000000000LL };
+
+  BOOST_TEST((!!db.execute(insert_into_table, []() {}, 0, inserting)));
+
+  const auto select_from_table =
+    "SELECT data FROM Test;";
+
+  const auto cb = [](std::chrono::system_clock::duration t) noexcept {
+
+  };
+
+  BOOST_TEST((!!db.template execute<std::chrono::system_clock::duration>(select_from_table, cb)));
+}
