@@ -47,67 +47,71 @@ dlib::postgresql_impl::Results::Results(void* result) noexcept :
 
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int64_t& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
-  if (PQgetisnull(result, on_, id)) {
+  if (PQgetisnull(result, on_, static_cast<int>(id))) {
     return Postgresql_error::is_null;
   }
-  returning = std::stoll(PQgetvalue(result, on_, id));
+  returning = std::stoll(PQgetvalue(result, on_, static_cast<int>(id)));
   return success;
 }
 
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int32_t& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
-  if (PQgetisnull(result, on_, id)) {
+  if (PQgetisnull(result, on_, static_cast<int>(id))) {
     return Postgresql_error::is_null;
   }
-  returning = std::stol(PQgetvalue(result, on_, id));
+  returning = std::stol(PQgetvalue(result, on_, static_cast<int>(id)));
   return success;
 }
 
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::string& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
-  if (PQgetisnull(result, on_, id)) {
+  if (PQgetisnull(result, on_, static_cast<int>(id))) {
     return Postgresql_error::is_null;
   }
-  returning = returning.assign(PQgetvalue(result, on_, id), PQgetlength(result, on_, id));
+  returning = returning.assign(PQgetvalue(result, on_, static_cast<int>(id)), PQgetlength(result, on_, static_cast<int>(id)));
   return success;
 }
 
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::string_view& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
-  if (PQgetisnull(result, on_, id)) {
+  if (PQgetisnull(result, on_, static_cast<int>(id))) {
     return Postgresql_error::is_null;
   }
-  returning = std::string_view{ PQgetvalue(result, on_, id), PQgetlength(result, on_, id) };
+  returning = std::string_view{
+    PQgetvalue(result, on_, static_cast<int>(id)),
+    static_cast<std::size_t>(PQgetlength(result, on_, static_cast<int>(id))) };
   return success;
 }
 
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, const char*& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
-  if (PQgetisnull(result, on_, id)) {
+  if (PQgetisnull(result, on_, static_cast<int>(id))) {
     return Postgresql_error::is_null;
   }
-  returning = PQgetvalue(result, on_, id);
+  returning = PQgetvalue(result, on_, static_cast<int>(id));
   return success;
 }
 
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, Blob& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
-  if (PQgetisnull(result, on_, id)) {
+  if (PQgetisnull(result, on_, static_cast<int>(id))) {
     return Postgresql_error::is_null;
   }
-  returning = Blob{ reinterpret_cast<std::byte*>(PQgetvalue(result, on_, id)), PQgetlength(result, on_, id) };
+  returning = Blob{ 
+    reinterpret_cast<std::byte*>(PQgetvalue(result, on_, static_cast<int>(id))), 
+    static_cast<std::size_t>(PQgetlength(result, on_, static_cast<int>(id))) };
   return success;
 }
 
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::chrono::system_clock::time_point& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
-  if (PQgetisnull(result, on_, id)) {
+  if (PQgetisnull(result, on_, static_cast<int>(id))) {
     return Postgresql_error::is_null;
   }
 
   std::stringstream sstream;
   
-  sstream << PQgetvalue(result, on_, id);
+  sstream << PQgetvalue(result, on_, static_cast<int>(id));
   date::from_stream(sstream, "%F %T", returning);
 
   return dlib::success;
@@ -115,13 +119,13 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::ch
 
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::chrono::system_clock::duration& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
-  if (PQgetisnull(result, on_, id)) {
+  if (PQgetisnull(result, on_, static_cast<int>(id))) {
     return Postgresql_error::is_null;
   }
 
   std::stringstream sstream;
 
-  sstream << PQgetvalue(result, on_, id);
+  sstream << PQgetvalue(result, on_, static_cast<int>(id));
 
   date::from_stream(sstream, "%5H:%M:%S", returning);
 
