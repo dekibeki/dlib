@@ -19,6 +19,10 @@ namespace dlib {
       Results(void*) noexcept;
       Result<void> get_column(size_t id, int64_t&) noexcept;
       Result<void> get_column(size_t id, int32_t&) noexcept;
+      Result<void> get_column(size_t id, std::string&) noexcept;
+      Result<void> get_column(size_t id, std::string_view&) noexcept;
+      Result<void> get_column(size_t id, const char*&) noexcept;
+      Result<void> get_column(size_t id, Blob&) noexcept;
       Result<void> get_column(size_t id, std::chrono::system_clock::duration&) noexcept;
       Result<void> get_column(size_t id, std::chrono::system_clock::time_point&) noexcept;
       template<typename T>

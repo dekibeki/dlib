@@ -63,6 +63,42 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int32_t
   return success;
 }
 
+dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::string& returning) noexcept {
+  PGresult* result = static_cast<PGresult*>(results_.get());
+  if (PQgetisnull(result, on_, id)) {
+    return Postgresql_error::is_null;
+  }
+  returning = returning.assign(PQgetvalue(result, on_, id), PQgetlength(result, on_, id));
+  return success;
+}
+
+dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::string_view& returning) noexcept {
+  PGresult* result = static_cast<PGresult*>(results_.get());
+  if (PQgetisnull(result, on_, id)) {
+    return Postgresql_error::is_null;
+  }
+  returning = std::string_view{ PQgetvalue(result, on_, id), PQgetlength(result, on_, id) };
+  return success;
+}
+
+dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, const char*& returning) noexcept {
+  PGresult* result = static_cast<PGresult*>(results_.get());
+  if (PQgetisnull(result, on_, id)) {
+    return Postgresql_error::is_null;
+  }
+  returning = PQgetvalue(result, on_, id);
+  return success;
+}
+
+dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, Blob& returning) noexcept {
+  PGresult* result = static_cast<PGresult*>(results_.get());
+  if (PQgetisnull(result, on_, id)) {
+    return Postgresql_error::is_null;
+  }
+  returning = Blob{ reinterpret_cast<std::byte*>(PQgetvalue(result, on_, id)), PQgetlength(result, on_, id) };
+  return success;
+}
+
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::chrono::system_clock::time_point& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
   if (PQgetisnull(result, on_, id)) {
