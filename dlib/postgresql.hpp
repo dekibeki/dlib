@@ -28,12 +28,12 @@ namespace dlib {
       template<typename T>
       Result<void> get_column(size_t id, Nullable<T>& returning) noexcept {
         if (is_null_(id)) {
-          returning = std::nullopt;
+          returning = null;
           return success;
         }
 
         returning = T{};
-        return get_column(id, *returning);
+        return get_column(id, returning.data());
       }
       template<typename Cb>
       Result<void> run_callbacks(Cb&& cb) noexcept {
@@ -90,12 +90,22 @@ namespace dlib {
       temps.emplace_back(std::to_string(t));
       return temps.back().c_str();
     }
+    static const char* bind_arg_(Binding_temps&, Null) noexcept;
     static const char* bind_arg_(Binding_temps&, const char*) noexcept;
     static const char* bind_arg_(Binding_temps&, std::string const&) noexcept;
     static const char* bind_arg_(Binding_temps&, std::string_view) noexcept;
     static const char* bind_arg_(Binding_temps&, Blob const&) noexcept;
     static const char* bind_arg_(Binding_temps&, std::chrono::system_clock::time_point const&) noexcept;
     static const char* bind_arg_(Binding_temps&, std::chrono::system_clock::duration const&) noexcept;
+
+    template<typename T>
+    static const char* bind_arg_(Binding_temps& temps, Nullable<T> const& value) noexcept {
+      if (!value.is_null()) {
+        return bind_arg_(temps, value.data());
+      } else {
+        return bind_arg_(temps, null);
+      }
+    }
 
     void bind_args_(std::vector<const char*>& args, Binding_temps&) noexcept;
 

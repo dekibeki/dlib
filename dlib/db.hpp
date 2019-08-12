@@ -17,8 +17,40 @@
 namespace dlib {
   using Blob = Array_view<const std::byte>;
 
+  struct Null {
+  };
+  constexpr Null null = Null{};
+
   template<typename T>
-  using Nullable = std::optional<T>;
+  class Nullable {
+  public:
+    constexpr Nullable() noexcept :
+      datum_{ std::nullopt } {
+
+    }
+    constexpr Nullable(T data) noexcept :
+      datum_{ std::move(data) } {
+
+    }
+
+    constexpr Nullable(Null) noexcept :
+      datum_{ std::nullopt } {
+
+    }
+
+    bool is_null() const noexcept {
+      return !datum_.has_value();
+    }
+    T& data() noexcept {
+      return datum_.value();
+    }
+    T const& data() const noexcept {
+      return datum_.value();
+    }
+
+  private:
+    std::optional<T> datum_;
+  };
 
   namespace db_impl {
     template<typename Driver, typename String>

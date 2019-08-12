@@ -202,6 +202,10 @@ dlib::Result<void> dlib::Postgresql_driver::rollback() noexcept {
   }
 }
 
+const char* dlib::Postgresql_driver::bind_arg_(Binding_temps&, Null) noexcept {
+  return nullptr;
+}
+
 const char* dlib::Postgresql_driver::bind_arg_(Binding_temps&, const char* str) noexcept {
   return str;
 }
@@ -286,6 +290,8 @@ dlib::Result<dlib::postgresql_impl::Results> dlib::Postgresql_driver::exec_(cons
   if (result == nullptr
     || PQresultStatus(
       result) == PGRES_FATAL_ERROR) {
+    const char* error_msg = PQresultErrorMessage(result);
+    PQclear(result);
     return Postgresql_error::error;
   }
 

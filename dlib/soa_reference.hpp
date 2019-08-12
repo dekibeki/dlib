@@ -112,7 +112,7 @@ namespace dlib {
   }
 
   template<typename ...Ts>
-  void swap(Soa_reference<Ts...> r1, Soa_reference<Ts...> r2) noexcept {
+  void swap(Soa_reference<Ts...>& r1, Soa_reference<Ts...>& r2) noexcept {
     return r1.swap(r2);
   }
 }

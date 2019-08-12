@@ -73,3 +73,34 @@ BOOST_AUTO_TEST_CASE(intervals) {
 
   BOOST_TEST((!!db.template execute<std::chrono::system_clock::duration>(select_from_table, cb)));
 }
+
+BOOST_AUTO_TEST_CASE(nullable) {
+  dlib::Postgresql_db db;
+
+  constexpr auto create_table =
+    "CREATE TABLE Test("
+    "id SERIAL NOT NULL PRIMARY KEY,"
+    "data INT);";
+
+  BOOST_TEST((!!db.open(connection_string)));
+
+  BOOST_TEST((!!db.execute(create_table, []() {})));
+
+  constexpr auto insert_into_table =
+    "INSERT INTO Test(data) VALUES ($1);";
+
+  BOOST_TEST((!!db.execute(insert_into_table, []() {}, 0)));
+  BOOST_TEST((!!db.execute(insert_into_table, []() {}, dlib::Nullable{ 0 })));
+  BOOST_TEST((!!db.execute(insert_into_table, []() {}, dlib::null)));
+  BOOST_TEST((!!db.execute(insert_into_table, []() {}, dlib::Nullable<int>{dlib::null})));
+
+  constexpr auto select_from_table =
+    "SELECT data FROM Test;";
+
+  const auto nullable_cb = [](dlib::Nullable<int> data) noexcept {
+
+  };
+
+  BOOST_TEST((!db.execute<int>(select_from_table, [](int) {})));
+  BOOST_TEST((!!db.execute<dlib::Nullable<int>>(select_from_table, nullable_cb)));
+}

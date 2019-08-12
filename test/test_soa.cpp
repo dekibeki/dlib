@@ -46,6 +46,12 @@ BOOST_AUTO_TEST_CASE(soa_erase) {
   BOOST_TEST((::dlib::get<std::string>(*soa.begin()) == "row3"));
 }
 
+BOOST_AUTO_TEST_CASE(soa_swap_references) {
+  Testing_soa soa{ generate_testing_soa() };
+
+  swap(*soa.begin(), *(soa.begin() + 1));
+}
+
 BOOST_AUTO_TEST_CASE(soa_move_and_copy) {
   Testing_soa soa{ generate_testing_soa() };
 
