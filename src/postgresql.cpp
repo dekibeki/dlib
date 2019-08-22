@@ -2,6 +2,8 @@
 
 #include <libpq-fe.h>
 
+#include <date/date.h>
+
 namespace {
   enum class Postgresql_error : int {
     ok = 0,
@@ -271,8 +273,6 @@ const char* dlib::Postgresql_driver::bind_arg_(Binding_temps& temps, std::chrono
   temps.emplace_back(sstream.str());
   return temps.back().c_str();
 }
-
-const char* dlib::Postgresql_drvier::bind_arg_(Binding_temps&)
 
 void dlib::Postgresql_driver::bind_args_(std::vector<const char*>&, Binding_temps&) noexcept {
 

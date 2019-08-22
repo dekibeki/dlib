@@ -5,8 +5,6 @@
 #include <dlib/db.hpp>
 #include <unordered_map>
 
-#include <date/tz.h>
-
 namespace dlib {
   namespace postgresql_impl { 
     struct Result_destructor {
@@ -25,7 +23,6 @@ namespace dlib {
       Result<void> get_column(size_t id, Blob&) noexcept;
       Result<void> get_column(size_t id, std::chrono::system_clock::duration&) noexcept;
       Result<void> get_column(size_t id, std::chrono::system_clock::time_point&) noexcept;
-      Result<void> get_column(size_t id, date::zoned_time<std::chrono::system_clock::period>&) noexcept;
       template<typename T>
       Result<void> get_column(size_t id, Nullable<T>& returning) noexcept {
         if (is_null_(id)) {
