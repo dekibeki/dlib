@@ -3,6 +3,7 @@
 #include <array>
 #include <vector>
 #include <algorithm>
+#include <iterator>
 #include <type_traits>
 #include <dlib/math.hpp>
 
@@ -131,6 +132,32 @@ namespace dlib {
     }
     constexpr const_iterator cend() const noexcept {
       return data() + size_;
+    }
+
+    constexpr void pop_back() noexcept {
+      *this = subarray(0, size() - 1);
+    }
+
+    constexpr void erase(iterator pos) noexcept {
+      if (size() > 1) {
+        std::swap(*pos, back());
+      }
+      pop_back();
+    }
+    constexpr void erase(iterator begin, iterator end) noexcept {
+      if (begin == end) {
+        return;
+      }
+      
+      const auto container_end = cend();
+
+      while (container_end != end) {
+        std::iter_swap(begin, end);
+        ++begin;
+        ++end;
+      }
+
+      *this = subarray(0, size() - std::distance(begin, end));
     }
 
     constexpr Array_view subarray_unsafe(size_type offset, size_type len) const noexcept {

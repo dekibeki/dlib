@@ -272,6 +272,8 @@ const char* dlib::Postgresql_driver::bind_arg_(Binding_temps& temps, std::chrono
   return temps.back().c_str();
 }
 
+const char* dlib::Postgresql_drvier::bind_arg_(Binding_temps&)
+
 void dlib::Postgresql_driver::bind_args_(std::vector<const char*>&, Binding_temps&) noexcept {
 
 }
