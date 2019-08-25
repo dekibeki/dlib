@@ -118,6 +118,57 @@ namespace dlib {
     constexpr Closed closed = Closed{};
   }
 
+  template<typename ...Result_types>
+  struct Stmt_results {};
+
+  template<typename ...Result_types>
+  constexpr Stmt_results<Result_types...> stmt_results = {};
+
+  template<typename ...Argument_types>
+  struct Stmt_arguments {};
+
+  template<typename ...Argument_types>
+  constexpr Stmt_arguments<Argument_types...> stmt_arguments = {};
+
+  /*Colums and Arguments must be two lists of types for the respective things*/
+  template<typename Query, typename Results, typename Arguments>
+  struct Stmt {
+
+    constexpr Stmt(Query query_) noexcept :
+      query{ std::move(query_) } {
+
+    }
+
+    template<typename Arg1>
+    constexpr Stmt(Query query_, Arg1) noexcept :
+      query{ std::move(query_) } {
+
+    }
+
+    template<typename Arg1, typename Arg2>
+    constexpr Stmt(Query query_, Arg1, Arg2) noexcept :
+      query{ std::move(query_) } {
+
+    }
+
+    Query query;
+  };
+
+  template<typename Query>
+  Stmt(Query)->Stmt<Query, Stmt_results<>, Stmt_arguments<>>;
+
+  template<typename Query, typename ...Result_types>
+  Stmt(Query, Stmt_results<Result_types...>)->Stmt<Query, Stmt_results<Result_types...>, Stmt_arguments<>>;
+
+  template<typename Query, typename ...Argument_types>
+  Stmt(Query, Stmt_arguments<Argument_types...>)->Stmt<Query, Stmt_results<>, Stmt_arguments<Argument_types...>>;
+
+  template<typename Query, typename ...Result_types, typename ...Argument_types>
+  Stmt(Query, Stmt_results<Result_types...>, Stmt_arguments<Argument_types...>)->Stmt<Query, Stmt_results<Result_types...>, Stmt_arguments<Argument_types...>>;
+
+  template<typename Query, typename ...Result_types, typename ...Argument_types>
+  Stmt(Query, Stmt_arguments<Argument_types...>, Stmt_results<Result_types...>)->Stmt<Query, Stmt_results<Result_types...>, Stmt_arguments<Argument_types...>>;
+
   template<typename Driver>
   class Db final {
   public:
@@ -161,11 +212,6 @@ namespace dlib {
       return success;
     }
 
-    template<typename ...Columns, typename Query, typename ...Args, typename Callback>
-    Result<void> execute(Query query, Callback&& callback, Args const& ... args) noexcept {
-      return execute<Columns...>(query.query_string(), std::forward<Callback>(callback), args...);
-    }
-
     template<typename ...Columns, typename ...Args, typename Callback>
     Result<void> execute(std::string_view query, Callback&& callback, Args const& ... args) noexcept {
       static_assert(std::is_invocable_v<Callback, Columns...>);
@@ -184,6 +230,14 @@ namespace dlib {
     template<typename ...Columns, typename ...Args, typename Callback>
     Result<void> execute(const char* query, Callback&& callback, Args const& ... args) noexcept {
       return execute<Columns...>(std::string_view{ query }, std::forward<Callback>(callback), args...);
+    }
+
+    template<template<typename...> typename Columns_holder, typename ...Columns, typename Query, template<typename...> typename Args_holder, typename ...Args, typename Callback>
+    Result<void> execute(
+      Stmt<Query, Columns_holder<Columns...>, Args_holder<Args...>> const& stmt,
+      Callback&& callback,
+      Args const& ... args) noexcept {
+      return execute<Columns...>(stmt.query, std::forward<Callback>(callback), args...);
     }
 
     template<typename Callback>

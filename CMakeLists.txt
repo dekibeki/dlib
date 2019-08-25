@@ -36,7 +36,6 @@ add_library(dlib
   ${dlibSrc}/soa.cpp
   ${dlibSrc}/soa_reference.cpp
   ${dlibSrc}/strong_type.cpp
-  ${dlibSrc}/stmt.cpp
   ${dlibSrc}/unique_value.cpp
   ${dlibSrc}/util.cpp
   ${dlibSrc}/vector.cpp
@@ -56,7 +55,6 @@ add_executable(dlibTest
   ${dlibTest}/test_quaternion.cpp
   ${dlibTest}/test_serialization.cpp
   ${dlibTest}/test_soa.cpp
-  ${dlibTest}/test_stmt.cpp
   ${dlibTest}/test_strong_type.cpp
   ${dlibTest}/test_vector_adaptors.cpp
   )
