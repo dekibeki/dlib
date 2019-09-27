@@ -127,7 +127,7 @@ namespace dlib {
       if (start != end) {
         byte = *start++;
       } else {
-        return Errors::buffer_too_small;
+        return error("buffer too small");
       }
 
       return Deserialization<std::byte, InputIterator>{byte, std::move(start)};

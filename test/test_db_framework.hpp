@@ -46,7 +46,7 @@ namespace dlib_tests {
     DLIB_TRY((db.execute(impl::insert_query, []() {})));
     DLIB_TRY((db.template execute<int>(impl::select_max_id_query, [&value](int i) { value = i; })));
     if (value != 2) {
-      return dlib::Errors::not_found;
+      return dlib::error("expected value not found");
     }
     return dlib::success;
   }

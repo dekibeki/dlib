@@ -77,8 +77,7 @@ namespace dlib {
 
       Result<Type> locked_get_() noexcept {
         if (this->holding_.empty()) {
-          //TODO: fix this, make a nice error_message
-          return Errors::empty;
+          return error("backing vector is empty, out of objects");
         } else {
           Type value = std::move(holding_.back());
           holding_.pop_back();

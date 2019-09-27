@@ -104,7 +104,12 @@ namespace dlib {
       Tuple columns;
       auto cb = [&columns, &callback](auto& results) noexcept -> Result<void> {
         DLIB_TRY((get_columns_(results, columns)));
-        DLIB_TRY((std::apply(callback, columns)));
+        using Apply_ret = decltype(std::apply(callback, columns));
+        if constexpr (is_result<Apply_ret>) {
+          DLIB_TRY((std::apply(callback, columns)));
+        } else {
+          std::apply(callback, columns);
+        }
         return success;
       };
 
@@ -194,7 +199,7 @@ namespace dlib {
 
     Result<void> open(std::string_view location) noexcept {
       if (!std::holds_alternative<db_impl::Closed>(state_)) {
-        return Errors::wrong_state;
+        return error("db is not closed");
       }
       Driver driver;
       DLIB_TRY((db_impl::open(driver, location)));
@@ -205,7 +210,7 @@ namespace dlib {
     Result<void> close() noexcept {
       Driver* driver = std::get_if<Driver>(&state_);
       if (driver == nullptr) {
-        return Errors::wrong_state;;
+        return error("db was not in an openned state");
       }
       DLIB_TRY((db_impl::close(*driver)));
       state_ = db_impl::closed;
@@ -217,7 +222,7 @@ namespace dlib {
       static_assert(std::is_invocable_v<Callback, Columns...>);
       Driver* driver = std::get_if<Driver>(&state_);
       if (driver == nullptr) {
-        return Errors::wrong_state;
+        return error("db is not open");
       }
       return db_impl::execute_<Columns...>(*driver, query, std::forward<Callback>(callback), args...);
     }
@@ -244,7 +249,7 @@ namespace dlib {
     Result<void> transaction(Callback&& cb) noexcept {
       Driver* driver = std::get_if<Driver>(&state_);
       if (driver == nullptr) {
-        return Errors::wrong_state;;
+        return error("db is not open");
       }
       DLIB_TRY((db_impl::begin(*driver)));
       if constexpr (std::is_same_v<void, decltype(cb(*this))>) {
@@ -264,7 +269,7 @@ namespace dlib {
     Result<Driver*> driver() noexcept {
       Driver* driver = std::get_if<Driver>(&state_);
       if (driver == nullptr) {
-        return Errors::wrong_state;
+        return error("db is not open");
       }
       return driver;
     }

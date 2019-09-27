@@ -5,83 +5,9 @@
 #include <type_traits>
 #include <system_error>
 
-/*
-
-  //OLD outcome2 result, started causing msvc internal compiler errors, so I made a shitty version
-
-#include "outcome_orig.hpp"
+#include <dlib/error.hpp>
 
 namespace dlib {
-  namespace outcome = outcome_v2_4d0d18fc;
-
-  template<typename T>
-  using Result = outcome::result<T>;
-  template<typename T>
-  using Outcome = outcome::outcome<T>;
-
-  enum class ResultVal : bool {
-    Success = true,
-    Failure = false
-  };
-
-  template<typename T>
-  bool isSuccess(Outcome<T> const& o) {
-    return static_cast<bool>(o);
-  }
-
-  bool isSuccess(ResultVal res);
-
-  constexpr auto success noexcept {
-    return outcome::success;
-  }
-
-  template<typename T>
-  constexpr auto success(T&& t) noexcept {
-    return outcome::success(std::forward<T>(t));
-  }
-
-  template<typename T>
-  constexpr auto failure(T&& err) noexcept {
-    return outcome::failure(std::forward<T>(t));
-  }
-
-  template<typename T>
-  struct Is_result {
-    static constexpr bool value = false;
-  };
-
-  template<typename T>
-  struct Is_result<Result<T>> {
-    static constexpr bool value = true;
-  };
-
-  template<typename T>
-  constexpr bool is_result = Is_result<T>::value;
-}*/
-
-namespace dlib {
-  namespace outcome_impl {
-    struct Error_code_data {
-      int value;
-      const std::error_category* category;
-    };
-  }
-
-  enum class Result_val : bool {
-    success = true,
-    failure = false
-  };
-
-  enum class Errors : int {
-    success = 0,
-    empty,
-    not_found,
-    buffer_too_small,
-    wrong_state,
-  };
-
-  std::error_code make_error_code(Errors val) noexcept;
-
   template<typename T>
   class Result {
   public:
@@ -90,14 +16,20 @@ namespace dlib {
 
     }
     Result(std::error_code ec) noexcept :
-      val_{ outcome_impl::Error_code_data{ ec.value(), &ec.category() } } {
+      val_{ Error{ ec.message() } } {
 
     }
+    Result(Error error) noexcept :
+      val_{ std::move(error) } {
+
+    }
+
     template<typename Val, typename = std::enable_if_t<std::is_error_code_enum_v<Val>>>
     Result(Val val) noexcept :
       Result{ std::error_code{std::move(val)} } {
 
     }
+
     constexpr bool success() const noexcept {
       return val_.index() == 0;
     }
@@ -110,77 +42,60 @@ namespace dlib {
     constexpr T const& value() const noexcept {
       return std::get<0>(val_);
     }
-    std::error_code error() const noexcept {
-      outcome_impl::Error_code_data const& data = std::get<1>(val_);
-      return std::error_code{ data.value, *data.category };
+    Error& error() noexcept {
+      return std::get<1>(val_);
+    }
+    Error const& error() const noexcept {
+      return std::get<1>(val_);
     }
     constexpr explicit operator bool() const noexcept {
       return success();
     }
-    constexpr operator Result_val() const noexcept {
-      if (success()) {
-        return Result_val::success;
-      } else {
-        return Result_val::failure;
-      }
-    }
   private:
     std::variant<
       T,
-      outcome_impl::Error_code_data> val_;
+      Error> val_;
   };
 
   namespace outcome_impl {
     struct Success {};
-    constexpr Success success;
+
   }
 
   template<>
   class Result<void> {
   public:
     constexpr Result(outcome_impl::Success) noexcept :
-      val_{ std::nullopt } {
+      val_{ } {
 
     }
 
-    Result(std::error_code ec) noexcept :
-      val_{ outcome_impl::Error_code_data{ ec.value(), &ec.category()} } {
+    Result(Error error) noexcept;
 
-    }
+    Result(std::error_code ec) noexcept;
+
     template<typename Val, typename = std::enable_if_t<std::is_error_code_enum_v<Val>>>
     Result(Val val) noexcept :
       Result{ std::error_code{std::move(val)} } {
 
     }
 
-    constexpr bool success() const noexcept {
-      return !val_.has_value();
-    }
-    constexpr bool failure() const noexcept {
-      return !success();
-    }
+    bool success() const noexcept;
+    bool failure() const noexcept;
+
     static constexpr void value() noexcept {
 
     }
-    std::error_code error() const noexcept {
-      outcome_impl::Error_code_data const& data = val_.value();
-      return std::error_code{ data.value, *data.category };
-    }
-    constexpr explicit operator bool() const noexcept {
-      return success();
-    }
-    constexpr operator Result_val() const noexcept {
-      if (success()) {
-        return Result_val::success;
-      } else {
-        return Result_val::failure;
-      }
-    }
+    Error& error() noexcept;
+    Error const& error() const noexcept;
+    explicit operator bool() const noexcept;
   private:
-    std::optional<outcome_impl::Error_code_data> val_;
+    Error val_;
   };
 
-  constexpr Result<void> success{ outcome_impl::success };
+  constexpr outcome_impl::Success success;
+
+  Error error(std::string reason) noexcept;
 
   namespace outcome_impl {
     template<typename T>
@@ -198,28 +113,6 @@ namespace dlib {
 
   template<typename T>
   constexpr bool is_result = outcome_impl::Is_result_impl<T>::value;
-
-  template<typename Cb>
-  constexpr auto ensure_is_result(Cb&& cb) noexcept {
-    using Return_type = std::invoke_result_t<Cb>;
-
-    if constexpr (is_result<Return_type>) {
-      return cb();
-    } else if constexpr (std::is_same_v<void, Return_type>) {
-      cb();
-      return success;
-    } else {
-      return Result<Return_type>{ cb() };
-    }
-  }
-}
-
-namespace std {
-  template<>
-  struct is_error_code_enum<::dlib::Errors> :
-    public ::std::true_type {
-
-  };
 }
 
 #define DLIB_CONCAT_(a, b) a##b
@@ -228,16 +121,16 @@ namespace std {
 
 #define DLIB_TRY1(stmt) \
   do {\
-    auto res = ::dlib::ensure_is_result([&](){return (stmt); }); \
+    auto res = (stmt); \
     if(res.failure()) {\
-      return res.error(); \
+      return ::std::move(res.error()); \
     }\
   } while(false)
 
 #define DLIB_TRY2(var_name, stmt) \
-  auto DLIB_CONCAT(var_name,_result_temporary) = ::dlib::ensure_is_result([&](){ return (stmt);}); \
+  auto DLIB_CONCAT(var_name,_result_temporary) = (stmt); \
   if(DLIB_CONCAT(var_name,_result_temporary).failure()) {\
-    return DLIB_CONCAT(var_name,_result_temporary).error(); \
+    return std::move(DLIB_CONCAT(var_name,_result_temporary).error()); \
   }\
   auto&& var_name = DLIB_CONCAT(var_name,_result_temporary).value()
 

@@ -1,7 +1,6 @@
 cmake_minimum_required (VERSION 3.8)
 
 project(dlib CXX)
-project(dlibTest CXX)
 
 set(dlibInclude "${CMAKE_CURRENT_SOURCE_DIR}/")
 set(dlibSrc "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -23,6 +22,7 @@ add_library(dlib
   ${dlibSrc}/cache.cpp
   ${dlibSrc}/db.cpp
   ${dlibSrc}/dummy_db.cpp
+  ${dlibSrc}/error.cpp
   ${dlibSrc}/finder_interface.cpp
   ${dlibSrc}/interface.cpp
   ${dlibSrc}/iterators.cpp
@@ -48,9 +48,11 @@ add_executable(dlibTest
   ${dlibTest}/test_cache.cpp
   ${dlibTest}/test_db.cpp
   ${dlibTest}/test_dummy_db.cpp
+  ${dlibTest}/test_error.cpp
   ${dlibTest}/test_finder_interface.cpp
   ${dlibTest}/test_interface.cpp
   ${dlibTest}/test_iterators.cpp
+  ${dlibTest}/test_outcome.cpp
   ${dlibTest}/test_pool.cpp
   ${dlibTest}/test_quaternion.cpp
   ${dlibTest}/test_serialization.cpp
@@ -84,9 +86,6 @@ find_package(postgresql)
 if(${PostgreSQL_FOUND})
   message("found postgresql")
   set(DLIB_POSTGRESQL_FOUND true)
-
-  project(dlib_postgresql CXX)
-  project(dlib_postgresqlTest CXX)
   
   add_library(dlib_postgresql
     ${dlibSrc}/postgresql.cpp
@@ -137,9 +136,6 @@ if(${SQLite3_FOUND})
   set(DLIB_SQLITE_FOUND true)
 
   find_path(Sqlite3_INCLUDE_DIRS sqlite3.h)
-
-  project(dlib_sqlite CXX)
-  project(dlib_sqliteTest CXX)
 
   add_library(dlib_sqlite
     ${dlibSrc}/sqlite.cpp

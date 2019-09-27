@@ -4,38 +4,6 @@
 
 #include <date/date.h>
 
-namespace {
-  enum class Postgresql_error : int {
-    ok = 0,
-    error,
-    is_null
-  };
-
-  struct Postgresql_error_category final
-    : public std::error_category {
-    virtual const char* name() const noexcept final {
-      return "postgresql";
-    }
-    virtual std::string message(int i) const noexcept final {
-      return "unknown";
-    }
-  };
-
-  const Postgresql_error_category postgresql_error_category;
-
-  std::error_code make_error_code(Postgresql_error err) noexcept {
-    return std::error_code{ static_cast<int>(err), postgresql_error_category };
-  }
-}
-
-namespace std {
-  template<>
-  struct is_error_code_enum<::Postgresql_error> :
-    public ::std::true_type {
-
-  };
-}
-
 void dlib::postgresql_impl::Result_destructor::operator()(void* result) const noexcept {
   PQclear(static_cast<PGresult*>(result));
 }
@@ -50,7 +18,7 @@ dlib::postgresql_impl::Results::Results(void* result) noexcept :
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int64_t& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
   if (PQgetisnull(result, on_, static_cast<int>(id))) {
-    return Postgresql_error::is_null;
+    return error("column is null");
   }
   returning = std::stoll(PQgetvalue(result, on_, static_cast<int>(id)));
   return success;
@@ -59,7 +27,7 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int64_t
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int32_t& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
   if (PQgetisnull(result, on_, static_cast<int>(id))) {
-    return Postgresql_error::is_null;
+    return error("column is null");
   }
   returning = std::stol(PQgetvalue(result, on_, static_cast<int>(id)));
   return success;
@@ -68,7 +36,7 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, int32_t
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::string& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
   if (PQgetisnull(result, on_, static_cast<int>(id))) {
-    return Postgresql_error::is_null;
+    return error("column is null");
   }
   returning = returning.assign(PQgetvalue(result, on_, static_cast<int>(id)), PQgetlength(result, on_, static_cast<int>(id)));
   return success;
@@ -77,7 +45,7 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::st
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::string_view& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
   if (PQgetisnull(result, on_, static_cast<int>(id))) {
-    return Postgresql_error::is_null;
+    return error("column is null");
   }
   returning = std::string_view{
     PQgetvalue(result, on_, static_cast<int>(id)),
@@ -88,7 +56,7 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::st
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, const char*& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
   if (PQgetisnull(result, on_, static_cast<int>(id))) {
-    return Postgresql_error::is_null;
+    return error("column is null");
   }
   returning = PQgetvalue(result, on_, static_cast<int>(id));
   return success;
@@ -97,7 +65,7 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, const c
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, Blob& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
   if (PQgetisnull(result, on_, static_cast<int>(id))) {
-    return Postgresql_error::is_null;
+    return error("column is null");
   }
   returning = Blob{ 
     reinterpret_cast<std::byte*>(PQgetvalue(result, on_, static_cast<int>(id))), 
@@ -108,7 +76,7 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, Blob& r
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::chrono::system_clock::time_point& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
   if (PQgetisnull(result, on_, static_cast<int>(id))) {
-    return Postgresql_error::is_null;
+    return error("column is null");
   }
 
   std::stringstream sstream;
@@ -122,7 +90,7 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::ch
 dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::chrono::system_clock::duration& returning) noexcept {
   PGresult* result = static_cast<PGresult*>(results_.get());
   if (PQgetisnull(result, on_, static_cast<int>(id))) {
-    return Postgresql_error::is_null;
+    return error("column is null");
   }
 
   std::stringstream sstream;
@@ -135,7 +103,7 @@ dlib::Result<void> dlib::postgresql_impl::Results::get_column(size_t id, std::ch
 }
 
 bool dlib::postgresql_impl::Results::is_null_(size_t id) noexcept {
-  return PQgetisnull(static_cast<PGresult*>(results_.get()), on_, id) != 0;
+  return PQgetisnull(static_cast<PGresult*>(results_.get()), on_, static_cast<int>(id)) != 0;
 }
 
 dlib::Postgresql_driver::Postgresql_driver() noexcept :
@@ -155,10 +123,10 @@ dlib::Result<void> dlib::Postgresql_driver::open(std::string const& location) no
 dlib::Result<void> dlib::Postgresql_driver::open(const char* location) noexcept {
   PGconn* connection = PQconnectdb(location);
   if (connection == nullptr) {
-    return Postgresql_error::error;
+    return error("Could not create pgconn");
   } else if (PQstatus(connection) != CONNECTION_OK) {
     PQfinish(connection);
-    return Postgresql_error::error;
+    return error("Could not establish connection");
   } else {
     connection_ = connection;
     return dlib::success;
@@ -175,7 +143,7 @@ dlib::Result<void> dlib::Postgresql_driver::begin() noexcept {
   PGresult* res = PQexec(static_cast<PGconn*>(connection_), "BEGIN;");
   if (res == nullptr || PQresultStatus(res) != PGRES_COMMAND_OK) {
     PQclear(res);
-    return Postgresql_error::error;
+    return error("Could not begin transaction");
   } else {
     PQclear(res);
     return success;
@@ -186,7 +154,7 @@ dlib::Result<void> dlib::Postgresql_driver::commit() noexcept {
   PGresult* res = PQexec(static_cast<PGconn*>(connection_), "COMMIT;");
   if (res == nullptr || PQresultStatus(res) != PGRES_COMMAND_OK) {
     PQclear(res);
-    return Postgresql_error::error;
+    return error("Could not commit transaction");
   } else {
     PQclear(res);
     return success;
@@ -197,7 +165,7 @@ dlib::Result<void> dlib::Postgresql_driver::rollback() noexcept {
   PGresult* res = PQexec(static_cast<PGconn*>(connection_), "ROLLBACK;");
   if (res == nullptr || PQresultStatus(res) != PGRES_COMMAND_OK) {
     PQclear(res);
-    return Postgresql_error::error;
+    return error("Could not rollback connection");
   } else {
     PQclear(res);
     return success;
@@ -292,9 +260,9 @@ dlib::Result<dlib::postgresql_impl::Results> dlib::Postgresql_driver::exec_(cons
   if (result == nullptr
     || PQresultStatus(
       result) == PGRES_FATAL_ERROR) {
-    const char* error_msg = PQresultErrorMessage(result);
+    std::string error_msg = PQresultErrorMessage(result);
     PQclear(result);
-    return Postgresql_error::error;
+    return error(std::move(error_msg));
   }
 
   return postgresql_impl::Results{ result };
