@@ -34,5 +34,5 @@ dlib::Result<void>::operator bool() const noexcept {
 }
 
 dlib::Error dlib::error(std::string reason) noexcept {
-  return { reason };
+  return { std::move(reason) };
 }

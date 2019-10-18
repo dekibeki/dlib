@@ -14,7 +14,7 @@ find_package(Boost
   REQUIRED 
   COMPONENTS unit_test_framework)
 
-find_package(unofficial-date CONFIG REQUIRED)
+find_package(date CONFIG REQUIRED)
 
 add_library(dlib
   ${dlibSrc}/args.cpp
