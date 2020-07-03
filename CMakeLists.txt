@@ -35,7 +35,7 @@ add_library(dlib
   ${dlibSrc}/serialization.cpp
   ${dlibSrc}/soa.cpp
   ${dlibSrc}/soa_reference.cpp
-  ${dlibSrc}/strong_db.cpp
+  #${dlibSrc}/strong_db.cpp
   ${dlibSrc}/strong_type.cpp
   ${dlibSrc}/tuples.cpp
   ${dlibSrc}/unique_value.cpp
@@ -92,7 +92,7 @@ if(${PostgreSQL_FOUND})
   
   add_library(dlib_postgresql
     ${dlibSrc}/postgresql.cpp
-	${dlibSrc}/strong_postgresql.cpp
+	#${dlibSrc}/strong_postgresql.cpp
     )
 
   add_executable(dlib_postgresqlTest
