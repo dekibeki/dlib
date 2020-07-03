@@ -35,7 +35,9 @@ add_library(dlib
   ${dlibSrc}/serialization.cpp
   ${dlibSrc}/soa.cpp
   ${dlibSrc}/soa_reference.cpp
+  ${dlibSrc}/strong_db.cpp
   ${dlibSrc}/strong_type.cpp
+  ${dlibSrc}/tuples.cpp
   ${dlibSrc}/unique_value.cpp
   ${dlibSrc}/util.cpp
   ${dlibSrc}/vector.cpp
@@ -57,7 +59,9 @@ add_executable(dlibTest
   ${dlibTest}/test_quaternion.cpp
   ${dlibTest}/test_serialization.cpp
   ${dlibTest}/test_soa.cpp
+  ${dlibTest}/test_strong_db.cpp
   ${dlibTest}/test_strong_type.cpp
+  ${dlibTest}/test_tuples.cpp
   ${dlibTest}/test_vector_adaptors.cpp
   )
 
@@ -81,7 +85,7 @@ target_link_libraries(dlibTest
   dlib
   ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
-find_package(postgresql)
+find_package(PostgreSQL)
 
 if(${PostgreSQL_FOUND})
   message("found postgresql")
@@ -89,11 +93,13 @@ if(${PostgreSQL_FOUND})
   
   add_library(dlib_postgresql
     ${dlibSrc}/postgresql.cpp
+	${dlibSrc}/strong_postgresql.cpp
     )
 
   add_executable(dlib_postgresqlTest
     ${dlibTest}/postgresql_testMain.cpp
-    ${dlibTest}/test_postgresql.cpp)
+    ${dlibTest}/test_postgresql.cpp
+	${dlibTest}/test_strong_postgresql.cpp)
 
   target_include_directories(dlib_postgresql
     PUBLIC
@@ -116,8 +122,8 @@ if(${PostgreSQL_FOUND})
   target_link_libraries(dlib_postgresql
     PUBLIC
     dlib
-	unofficial::date::tz
-	unofficial::date::date
+	date::date-tz
+	date::date
     PRIVATE
     ${PostgreSQL_LIBRARIES})
 
@@ -129,7 +135,7 @@ else()
   message("did not find postgresql")
 endif()
 
-find_package(Sqlite3)
+find_package(SQLite3)
 
 if(${SQLite3_FOUND})
   message("found sqlite3")
