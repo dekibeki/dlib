@@ -322,7 +322,7 @@ namespace dlib {
 
     template<template<typename ...> typename List, typename ...Args>
     struct CountImpl<List<Args...>> {
-      static constexpr bool value = sizeof...(Args);
+      static constexpr std::size_t value = sizeof...(Args);
     };
 
     template<auto val>
