@@ -4,6 +4,8 @@
 #include <variant>
 #include <vector>
 #include <chrono>
+#include <memory>
+#include <cmath>
 
 #include <dlib/arrays.hpp>
 #include <dlib/args.hpp>
