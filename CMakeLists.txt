@@ -98,7 +98,8 @@ if(${PostgreSQL_FOUND})
   add_executable(dlib_postgresqlTest
     ${dlibTest}/postgresql_testMain.cpp
     ${dlibTest}/test_postgresql.cpp
-	${dlibTest}/test_strong_postgresql.cpp)
+	#${dlibTest}/test_strong_postgresql.cpp
+    )
 
   target_include_directories(dlib_postgresql
     PUBLIC
